@@ -177,6 +177,7 @@ class SyncRun(Base):
 # ---------------------------------------------------------------- engine
 
 _engine = None
+_engine_url = None
 
 
 def db_url() -> str:
@@ -194,9 +195,14 @@ def db_url() -> str:
 
 
 def engine():
-    global _engine
+    """Rebuilt whenever the URL changes, e.g. when Streamlit secrets are edited while the app is running."""
+    global _engine, _engine_url
+    url = db_url()
+    if _engine is not None and url != _engine_url:
+        _engine.dispose()
+        _engine = None
     if _engine is None:
-        url = db_url()
+        _engine_url = url
         kwargs = {"pool_pre_ping": True}
         if url.startswith("sqlite"):
             kwargs["connect_args"] = {"check_same_thread": False, "timeout": 30}
@@ -214,10 +220,10 @@ def is_postgres() -> bool:
 
 def reset_engine() -> None:
     """Drop the cached engine so the next call re-reads DATABASE_URL (tests)."""
-    global _engine
+    global _engine, _engine_url
     if _engine is not None:
         _engine.dispose()
-    _engine = None
+    _engine, _engine_url = None, None
 
 
 def session() -> Session:

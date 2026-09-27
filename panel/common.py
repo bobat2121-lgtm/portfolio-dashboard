@@ -13,11 +13,18 @@ LOCKOUT_SECONDS = 300
 
 
 def boot() -> None:
-    """Copy Streamlit secrets into env (cloud) so portfolio.config sees them like a local .env."""
+    """Copy Streamlit secrets into env on every run, so edits in the Secrets panel apply without a restart."""
     try:
+        changed = False
         for k, v in st.secrets.items():
-            if isinstance(v, (str, int, float)) and not os.environ.get(k):
+            if isinstance(v, (str, int, float)) and os.environ.get(k) != str(v):
                 os.environ[k] = str(v)
+                changed = True
+        if changed:
+            from portfolio.config import settings
+
+            settings.cache_clear()
+            st.cache_data.clear()  # results read under the old settings
     except Exception:  # noqa: BLE001 - no secrets.toml locally is fine
         pass
 

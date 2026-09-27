@@ -13,3 +13,16 @@ def test_private_overrides_merge_over_committed_yaml(monkeypatch):
     finally:
         monkeypatch.delenv("PORTFOLIO_CONFIG")
         config.settings.cache_clear()
+
+
+def test_engine_follows_a_changed_database_url(tmp_path, monkeypatch):
+    from portfolio import db
+
+    db.reset_engine()
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{(tmp_path / 'a.db').as_posix()}")
+    first = db.engine()
+    assert db.engine() is first  # cached while the URL is unchanged
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{(tmp_path / 'b.db').as_posix()}")
+    second = db.engine()  # e.g. Streamlit secrets edited while the app runs
+    assert second is not first and str(second.url).endswith("b.db")
+    db.reset_engine()
