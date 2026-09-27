@@ -1,9 +1,10 @@
-"""The front page's "every holding" panel, in four formats to trial side by side:
+"""The front page's "every holding" panel: the Cards format, plus four card variations to trial.
 
-    Cards      one card per holding (the original), now with a bold live price
-    Manifest   a terminal-style row per holding: price, 30-day pixel sparkline, value, weight, gain
-    Territory  a treemap: each tile sized by value and lit by today's move
-    Hero       the largest holding big, with a 60-day sparkline; the rest as compact cards
+    Cards      the original: symbol and bold price, value, weight bar, gain, accounts
+    Big price  the price is the headline; value and gain in a footer
+    Trend      the original plus a 30-day pixel sparkline
+    Cost       average cost to today's price, a paid / gain bar, and the gain
+    Holo       a cockpit instrument: ring gauge of portfolio share beside the readouts
 """
 from __future__ import annotations
 
@@ -16,7 +17,7 @@ from panel.views import MIN_SHOWN, esc, pct, tone, usd
 from portfolio import lenses, models as m
 from portfolio.pricehist import yahoo_for
 
-FORMATS = ["Cards", "Manifest", "Territory", "Hero"]
+FORMATS = ["Cards", "Big price", "Trend", "Cost", "Holo"]
 ARROW = {"up": "▲", "down": "▼", "flat": "■"}
 
 
@@ -103,102 +104,96 @@ def cards(shown: pd.DataFrame, _spark) -> str:
     return f'<div class="sw-cards">{"".join(out)}</div>'
 
 
-def manifest(shown: pd.DataFrame, spark) -> str:
-    rows = ['<div class="sw-mf-row sw-mf-head"><span>Holding</span><span>Price</span><span>30 days</span>'
-            '<span>Value</span><span>Weight</span><span>Gain</span><span>Held in</span></div>']
+def _avg_cost(r) -> float | None:
+    if pd.isna(r.cost_basis) or not r.quantity:
+        return None
+    return float(r.cost_basis) / (float(r.quantity) * (100.0 if r.asset_class == m.OPTION else 1.0))
+
+
+def big_price(shown: pd.DataFrame, _spark) -> str:
+    """The price is the headline; value and gain sit in a footer."""
+    out = []
     for r in shown.itertuples():
-        rows.append(
-            f'<div class="sw-mf-row"><span><b class="sw-sym">{esc(r.asset)}</b><small>{esc(r.name or r.asset_class)}</small></span>'
-            f'<span>{price_tag(r) or "<span class=flat>$1.00</span>"}</span>'
-            f'<span>{spark_html(spark.get(r.asset))}</span>'
-            f'<span class="sw-mf-val">{usd(r.market_value)}<small class="{tone(r.day_change)}">'
-            f'{usd(r.day_change, signed=True) if abs(r.day_change) >= 0.5 else ""}</small></span>'
-            f'<span><div class="sw-bar"><i style="width:{max(1.5, r.weight * 100):.1f}%"></i></div><small>{pct(r.weight)}</small></span>'
-            f'<span>{_pnl(r) or "<span class=flat>—</span>"}</span>'
-            f'<span class="sw-chips">{_chips(r)}</span></div>')
-    return f'<div class="sw-manifest">{"".join(rows)}</div>'
-
-
-def _worst(row: list[float], side: float) -> float:
-    s = sum(row)
-    return max(max(side * side * a / (s * s), (s * s) / (side * side * a)) for a in row)
-
-
-def squarify(values: list[float], w: float, h: float) -> list[tuple[float, float, float, float]]:
-    """Squarified treemap (Bruls et al.): rectangles (x, y, w, h) for values sorted largest first."""
-    total = sum(values) or 1.0
-    areas = [v * w * h / total for v in values]
-    x = y = 0.0
-    rects = []
-    while areas:
-        side = min(w, h)
-        row, i = [areas[0]], 1
-        while i < len(areas) and _worst(row + [areas[i]], side) <= _worst(row, side):
-            row.append(areas[i])
-            i += 1
-        s = sum(row)
-        if w >= h:
-            cw, cy = s / h, y
-            for a in row:
-                rects.append((x, cy, cw, a / cw))
-                cy += a / cw
-            x, w = x + cw, w - cw
+        c = day_pct(r) or 0.0
+        if r.asset == lenses.CASH_ASSET:
+            head, move = '<div class="sw-bp">cash</div>', '<div class="sw-bp-move flat">balances and sweep funds</div>'
         else:
-            rh, cx = s / w, x
-            for a in row:
-                rects.append((cx, y, a / rh, rh))
-                cx += a / rh
-            y, h = y + rh, h - rh
-        areas = areas[i:]
-    return rects
+            head = f'<div class="sw-bp">{price_fmt(float(r.price))}</div>'
+            extra = " · " + usd(r.day_change, signed=True) if abs(r.day_change) >= 0.5 else ""
+            move = f'<div class="sw-bp-move {tone(c * 100)}">{ARROW[tone(c * 100)]} {abs(c):.2%} today{extra}</div>'
+        out.append(
+            f'<div class="sw-card sw-v-bp"><div class="sw-card-top"><span class="sw-sym">{esc(r.asset)}</span>'
+            f'<span class="sw-weight">{pct(r.weight)}</span></div>{head}{move}'
+            f'<div class="sw-bp-foot"><span><small>value</small>{usd(r.market_value)}</span>'
+            f'<span><small>gain</small>{_pnl(r) or "—"}</span></div><div class="sw-chips">{_chips(r)}</div></div>')
+    return f'<div class="sw-cards">{"".join(out)}</div>'
 
 
-def territory(shown: pd.DataFrame, _spark) -> str:
-    W, H = 240.0, 100.0                                  # the panel's shape, roughly 2.4 : 1
-    rects = squarify(list(shown["market_value"]), W, H)
-    tiles = []
-    for (x, y, w, h), r in zip(rects, shown.itertuples()):
-        c = day_pct(r) if r.asset != lenses.CASH_ASSET else 0.0
-        heat = max(-1.0, min(1.0, (c or 0.0) / 0.03))
-        bg = (f"rgba(57,255,20,{0.1 + 0.35 * heat:.2f})" if heat > 0.02 else
-              f"rgba(255,59,48,{0.1 + 0.35 * -heat:.2f})" if heat < -0.02 else "rgba(138,143,152,.14)")
-        small = w * h < 700
-        body = (f'<b class="sw-sym">{esc(r.asset)}</b>'
-                + ("" if small else f'{price_tag(r, big=w > 60)}<span class="v">{usd(r.market_value)}</span>'
-                   f'<span class="w">{pct(r.weight)} · {_pnl(r) or "cash"}</span>'))
-        tiles.append(f'<div class="sw-tile" style="left:{x / W * 100:.3f}%;top:{y / H * 100:.3f}%;'
-                     f'width:{w / W * 100:.3f}%;height:{h / H * 100:.3f}%;background:{bg}">{body}</div>')
-    return (f'<div class="sw-territory">{"".join(tiles)}</div>'
-            '<div class="sw-legend">Tile size = value · color = today\'s move (green up, red down, grey flat)</div>')
+def trend(shown: pd.DataFrame, spark) -> str:
+    """The original card plus a 30-day pixel sparkline."""
+    out = []
+    for r in shown.itertuples():
+        series = spark.get(r.asset)
+        if series and series[0]:
+            chg = f'<span class="{tone(series[-1] - series[0])}">30 days {series[-1] / series[0] - 1:+.1%}</span>'
+        elif r.asset == lenses.CASH_ASSET:
+            chg = '<span class="flat">held as cash</span>'
+        else:
+            chg = '<span class="flat">no price history</span>'
+        out.append(
+            f'<div class="sw-card"><div class="sw-card-top"><span class="sw-sym">{esc(r.asset)}</span>{price_tag(r)}</div>'
+            f'<div class="sw-name">{esc(r.name or r.asset_class)}</div>'
+            f'<div class="sw-value">{usd(r.market_value)} <small class="flat">{pct(r.weight)}</small></div>'
+            f'{"" if r.asset == lenses.CASH_ASSET else spark_html(series)}<div class="sw-row">{chg}</div>'
+            f'<div class="sw-row">{_pnl(r)}{_day(r)}</div></div>')
+    return f'<div class="sw-cards">{"".join(out)}</div>'
 
 
-def hero(shown: pd.DataFrame, spark) -> str:
-    top, rest = shown.iloc[0], shown.iloc[1:]
-    r = next(shown.head(1).itertuples())
-    lead = (f'<div class="sw-hero"><div class="l"><div class="sw-card-top"><span class="sw-sym">{esc(top["asset"])}</span>'
-            f'<span class="sw-weight">{pct(top["weight"])} of portfolio</span></div>'
-            f'<div class="sw-name">{esc(top["name"] or top["asset_class"])}</div>{price_tag(r, big=True)}'
-            f'<div class="sw-value">{usd(top["market_value"])}</div><div class="sw-row">{_pnl(r)}{_day(r)}</div>'
-            f'<div class="sw-chips">{_chips(r)}</div></div>'
-            f'<div class="r">{spark_html(spark.get(top["asset"]), wide=True)}<div class="cap">last 60 days</div></div></div>')
-    small = []
-    for r in rest.itertuples():
-        small.append(f'<div class="sw-card sw-mini"><div class="sw-card-top"><span class="sw-sym">{esc(r.asset)}</span>'
-                     f'<span class="sw-weight">{pct(r.weight)}</span></div>{price_tag(r) or "<span class=flat>cash</span>"}'
-                     f'<div class="sw-value">{usd(r.market_value)}</div><div class="sw-row">{_pnl(r)}</div></div>')
-    return lead + f'<div class="sw-cards">{"".join(small)}</div>'
+def cost(shown: pd.DataFrame, _spark) -> str:
+    """What you paid against what it's worth: average cost to price, and a paid / gain bar."""
+    out = []
+    for r in shown.itertuples():
+        avg = _avg_cost(r)
+        if r.asset == lenses.CASH_ASSET or avg is None:
+            body = (f'<div class="sw-value">{usd(r.market_value)}</div>'
+                    '<div class="sw-row"><span class="flat">cash: nothing to gain or lose</span></div>')
+        else:
+            paid, worth = float(r.cost_basis), float(r.market_value)
+            top = max(paid, worth) or 1.0
+            cls = "up" if worth >= paid else "down"
+            body = (f'<div class="sw-cost">avg {price_fmt(avg)} <b>→</b> {price_fmt(float(r.price))}</div>'
+                    f'<div class="sw-split"><i class="paid" style="width:{min(paid, worth) / top * 100:.1f}%"></i>'
+                    f'<i class="{cls}" style="width:{abs(worth - paid) / top * 100:.1f}%"></i></div>'
+                    f'<div class="sw-row"><span class="flat">paid {usd(paid)}</span><span>worth {usd(worth)}</span></div>'
+                    f'<div class="sw-gain {tone(r.unrealized)}">{usd(r.unrealized, signed=True)} '
+                    f'<small>{pct(r.unrealized_pct, True)}</small></div>')
+        out.append(f'<div class="sw-card"><div class="sw-card-top"><span class="sw-sym">{esc(r.asset)}</span>'
+                   f'{price_tag(r)}</div>{body}</div>')
+    return f'<div class="sw-cards">{"".join(out)}</div>'
 
 
-RENDER = {"Cards": (cards, 0), "Manifest": (manifest, 30), "Territory": (territory, 0), "Hero": (hero, 60)}
+def holo(shown: pd.DataFrame, _spark) -> str:
+    """A cockpit instrument: a ring gauge of the holding's share of the portfolio beside its readouts."""
+    out = []
+    for r in shown.itertuples():
+        w = max(0.5, float(r.weight) * 100)
+        price = price_tag(r) or '<span class="sw-price">cash</span>'
+        out.append(
+            f'<div class="sw-card sw-v-holo"><div class="sw-ringbox"><div class="sw-ring" style="--p:{w:.1f}"></div>'
+            f'<span class="sw-ring-n">{r.weight:.0%}</span></div>'
+            f'<div class="sw-holo-read"><span class="sw-sym">{esc(r.asset)}</span>{price}'
+            f'<div class="sw-value">{usd(r.market_value)}</div><div class="sw-row">{_pnl(r)}</div></div></div>')
+    return f'<div class="sw-cards sw-cards-wide">{"".join(out)}</div>'
+
+
+RENDER = {"Cards": (cards, 0), "Big price": (big_price, 0), "Trend": (trend, 30), "Cost": (cost, 0), "Holo": (holo, 0)}
 
 
 def render(assets: pd.DataFrame, prices: pd.DataFrame) -> None:
     """The panel: heading, a format switcher for the trial, then the chosen format."""
-    left, right = st.columns([1, 1.15], vertical_alignment="bottom")
-    left.subheader("Every holding, all accounts combined")
-    with right:
-        fmt = st.segmented_control("Format", FORMATS, default="Cards", key="holdings_format",
-                                   label_visibility="collapsed") or "Cards"
+    st.subheader("Every holding, all accounts combined")
+    fmt = st.segmented_control("Format", FORMATS, default="Cards", key="holdings_format",
+                               label_visibility="collapsed") or "Cards"
     shown = assets[assets["market_value"] > MIN_SHOWN]
     if shown.empty:
         st.caption("No holdings over $100 yet.")

@@ -103,7 +103,7 @@ Two pages (top left): **Dashboard** and **Taxes**. A ticker of your holdings scr
 
 | Dashboard tab | What it shows |
 |---|---|
-| **Assets** (opens first) | every holding worth over $100, all accounts combined (BTC on Kraken + Robinhood = one BTC, MSTR in taxable + IRA = one MSTR, all cash = one Cash), each with a bold live price ($84,400 / $158.6 / $29.44), in four trial formats: **Cards**, **Manifest** (rows with 30-day pixel sparklines), **Territory** (treemap lit by today's move), **Hero** (largest holding big, 60-day sparkline). Below, two panels that open on demand: **Performance** (you vs the same deposits in BTC and in the S&P 500, and value vs money in; its title carries the headline) and **What if bitcoin hits…** (slide BTC's price; each holding moves by its measured beta) |
+| **Assets** (opens first) | every holding worth over $100, all accounts combined (BTC on Kraken + Robinhood = one BTC, MSTR in taxable + IRA = one MSTR, all cash = one Cash), each with a bold live price ($84,400 / $158.6 / $29.44), as cards, with a switcher to trial four card variations: **Big price** (the price is the headline), **Trend** (30-day pixel sparkline), **Cost** (average cost to price, paid/gain bar) and **Holo** (ring gauge of portfolio share). Below, two panels that open on demand: **Performance** (you vs the same deposits in BTC and in the S&P 500, and value vs money in; its title carries the headline) and **What if bitcoin hits…** (slide BTC's price; each holding moves by its measured beta) |
 | **Explore** | sub-tabs: **Accounts** (by account, asset class, taxable/IRA), **Themes** (Bitcoin-linked share, price in BTC), **Star map**, **Achievements** (16 badges from your history), **Positions**, **Activity** |
 | **Briefing** | a Star Wars opening crawl written from today's numbers |
 | **Sync** | sync health and recent runs |
@@ -117,7 +117,8 @@ An estimate; your 1099 is the record.
 **Performance starts June 30, 2025** (`performance.start` in `config/portfolio.yaml`): the portfolio's value that
 day counts as money in, and the BTC / S&P comparisons are replayed from there. Money in isn't the same as cost basis:
 cost basis is only what you paid for what you still hold; money in also covers your cash, money lost (or made) on
-things you've sold, fees and dividends.
+things you've sold, fees and dividends. Shares and coins held before SnapTrade's history aren't counted as money in
+(or as value); when one was sold, the cash it brought in counts as money in that day.
 
 **How history is rebuilt:** each account's holdings and cash are walked backwards from today through its transactions,
 and each day is valued with daily closes the sync job stores in `price_history` (split-adjusted; old quantities are

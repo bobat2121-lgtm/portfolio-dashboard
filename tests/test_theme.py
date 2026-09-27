@@ -42,12 +42,21 @@ def test_prices_round_the_way_the_cards_show_them():
     assert price_fmt(0.7861) == "$0.786" and price_fmt(None) == "—"
 
 
-def test_treemap_tiles_fill_the_panel_in_proportion():
-    from panel.holdings import squarify
-    vals = [23760, 13877, 2392, 1165]
-    rects = squarify(vals, 240, 100)
-    areas = [w * h for _, _, w, h in rects]
-    assert sum(areas) == pytest.approx(24000)
-    for a, v in zip(areas, vals):
-        assert a / 24000 == pytest.approx(v / sum(vals))
-    assert all(x >= -1e-9 and y >= -1e-9 and x + w <= 240 + 1e-6 and y + h <= 100 + 1e-6 for x, y, w, h in rects)
+def test_every_card_variation_renders_with_prices():
+    import pandas as pd
+    from panel import holdings as H
+    shown = pd.DataFrame([
+        {"asset": "MSTR", "symbol": "MSTR", "asset_class": "equity", "name": "Strategy", "quantity": 150.0, "price": 158.61,
+         "market_value": 23760.0, "day_change": -449.0, "cost_basis": 18053.0, "unrealized": 5707.0,
+         "unrealized_pct": 0.316, "weight": 0.577, "accounts": ["Robinhood IRA", "Robinhood Taxable"]},
+        {"asset": "Cash", "symbol": "Cash", "asset_class": "cash", "name": "Cash", "quantity": 2392.0, "price": 1.0,
+         "market_value": 2392.0, "day_change": 0.0, "cost_basis": 2392.0, "unrealized": 0.0, "unrealized_pct": 0.0,
+         "weight": 0.058, "accounts": ["Fidelity Taxable"]},
+    ])
+    spark = {"MSTR": [150.0, 152.0, 149.0, 158.61, 158.0]}
+    assert set(H.FORMATS) == set(H.RENDER) and "Manifest" not in H.FORMATS and len(H.FORMATS) == 5
+    for name, (fn, _days) in H.RENDER.items():
+        html = fn(shown, spark)
+        assert "MSTR" in html and "Cash" in html, name
+        assert "$158.6" in html, name
+    assert "avg $120.4" in H.cost(shown, {}) and "30 days" in H.trend(shown, spark)

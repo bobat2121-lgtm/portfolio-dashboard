@@ -38,6 +38,10 @@ class History:
         return self.daily.empty
 
 
+def _num(v) -> float | None:
+    return None if v is None or pd.isna(v) else float(v)
+
+
 def split_factors(splits: pd.DataFrame) -> dict[str, list[tuple[date, float]]]:
     out: dict[str, list] = defaultdict(list)
     for r in splits.itertuples():
@@ -87,6 +91,7 @@ def build(txns: pd.DataFrame, positions: pd.DataFrame, cash: pd.DataFrame, accou
     total_value = pd.Series(0.0, index=idx)
     total_flow = pd.Series(0.0, index=idx)
     negative: set[str] = set()
+    pre_held: set[str] = set()
 
     for acct in accounts.itertuples():
         key = acct.key
@@ -114,6 +119,7 @@ def build(txns: pd.DataFrame, positions: pd.DataFrame, cash: pd.DataFrame, accou
         cash_delta = pd.Series(0.0, index=idx)
         flow = pd.Series(0.0, index=idx)
         moves = []                                    # (date, symbol, adjusted qty) moved in/out
+        outs: dict[str, list] = defaultdict(list)     # symbol -> [(date, qty < 0, amount, type)] leaving
         for r in t.itertuples():
             sym = r.symbol or ""
             ysym = yahoo_for(sym, is_crypto) if sym else None
@@ -130,6 +136,8 @@ def build(txns: pd.DataFrame, positions: pd.DataFrame, cash: pd.DataFrame, accou
                 qty_delta[sym][r.trade_date] += q
                 if r.type in MOVE_TYPES:
                     moves.append((r.trade_date, sym, q))
+                if q < 0:
+                    outs[sym].append((r.trade_date, q, _num(r.amount), r.type))
             if sym and r.price is not None and not pd.isna(r.price) and float(r.price) > 0:
                 trade_px[sym].append((r.trade_date, float(r.price) / f))
             if option_label(sym)[0]:
@@ -137,11 +145,30 @@ def build(txns: pd.DataFrame, positions: pd.DataFrame, cash: pd.DataFrame, accou
 
         value = pd.Series(0.0, index=idx)
         px_cache: dict[str, pd.Series] = {}
+        pre_moved: dict[tuple, float] = defaultdict(float)
         for sym in set(now_qty) | set(qty_delta):
             d = qty_delta.get(sym, pd.Series(0.0, index=idx))
             hold = now_qty.get(sym, 0.0) - (d.sum() - d.cumsum())
             if (hold < -1e-6).any():
                 negative.add(sym)
+            # Shares/coins held before this account's history aren't tracked: they're not money in, and
+            # not value. They leave first (first in, first out); when sold, the cash they bring in is money in.
+            pre = max(0.0, now_qty.get(sym, 0.0) - float(d.sum()))
+            untracked = pd.Series(pre, index=idx)
+            if pre > 1e-9:
+                pre_held.add(sym)
+                left = pre
+                for dd, q, amount, typ in sorted(outs.get(sym, []), key=lambda x: x[0]):
+                    take = min(left, -q)
+                    if take <= 1e-12:
+                        break
+                    if typ in (m.SELL, m.OPTION_EVENT) and amount is not None:
+                        flow[dd] += abs(amount) * take / -q
+                    elif typ in MOVE_TYPES:
+                        pre_moved[(dd, sym)] += take
+                    left -= take
+                    untracked[untracked.index >= dd] = left
+            hold = hold - untracked
             ysym = yahoo_for(sym, is_crypto)
             if ysym in closes:
                 px = series(closes[ysym])
@@ -162,6 +189,7 @@ def build(txns: pd.DataFrame, positions: pd.DataFrame, cash: pd.DataFrame, accou
         value = value + cash_series
 
         for d, sym, q in moves:                        # coins/shares moved in or out count as money in/out
+            q = q + pre_moved.pop((d, sym), 0.0) if q < 0 else q     # untracked ones leaving don't count
             flow[d] += q * float(px_cache[sym][d]) * mult.get(sym, 1.0)
         live = pd.Series(np.array(days) >= acct_start, index=idx)
         opening = float(value[acct_start - timedelta(days=1)]) if (acct_start - timedelta(days=1)) in value.index else 0.0
@@ -169,6 +197,9 @@ def build(txns: pd.DataFrame, positions: pd.DataFrame, cash: pd.DataFrame, accou
         total_value = total_value.add(value.where(live, 0.0), fill_value=0.0)
         total_flow = total_flow.add(flow.where(live, 0.0), fill_value=0.0)
 
+    if pre_held:
+        notes.append("Shares and coins held before SnapTrade's history (" + ", ".join(sorted(pre_held)) + ") aren't "
+                     "counted; when they were sold, the cash they brought in counts as money in that day.")
     if negative:
         notes.append("Some history before the first transaction SnapTrade has is incomplete ("
                      + ", ".join(sorted(negative)) + "); those days are approximate.")
