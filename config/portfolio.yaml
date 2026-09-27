@@ -22,7 +22,14 @@ accounts:
     institution: Robinhood
     tax: taxable
     source: snaptrade
-    match: {institution: robinhood, retirement: false}
+    match: {institution: robinhood, retirement: false, name_contains: individual}
+
+  robinhood_crypto:
+    label: Robinhood Crypto
+    institution: Robinhood
+    tax: taxable
+    source: snaptrade
+    match: {institution: robinhood, name_contains: crypto}
 
   robinhood_ira:
     label: Robinhood IRA
@@ -48,6 +55,7 @@ sources:
     min_minutes_between_syncs: 10  # SnapTrade asks for no more than one pull per account per 10 min
     refresh: manual   # never | manual | always: ask SnapTrade to re-pull brokers (manual = Sync button / --refresh)
     overlap_days: 10  # re-read this many days of activity every sync to catch late-posting transactions
+    exclude_account_types: [CREDITCARD]  # not holdings (a card balance would read as negative cash)
   kraken:
     enabled: true
     min_minutes_between_syncs: 1

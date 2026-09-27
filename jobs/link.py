@@ -9,7 +9,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from portfolio.config import account_specs
+from portfolio.config import account_specs, source_settings
 from portfolio.sources.kraken import KrakenSource, balances_to_holdings, stablecoins
 from portfolio.sources.snaptrade import SnapTradeSource, is_retirement
 from portfolio.sync import map_accounts
@@ -21,7 +21,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--broker", help="SnapTrade broker slug to open straight to, e.g. FIDELITY or ROBINHOOD")
     args = ap.parse_args(argv)
 
-    st = SnapTradeSource()
+    st = SnapTradeSource(source_settings("snaptrade"))
     if args.portal:
         if st.missing_config():
             print(st.missing_config())
@@ -42,10 +42,14 @@ def main(argv: list[str] | None = None) -> int:
             b = c.get("brokerage") or {}
             state = "DISABLED, reconnect it" if c.get("disabled") else "ok"
             print(f"  connection: {b.get('name') or c.get('name')}  [{state}]  id={c.get('id')}")
-        accounts = st.list_accounts()
+        everything = st.list_accounts(include_excluded=True)
+        accounts = [a for a in everything if not st.excluded(a)]
         warnings: list[str] = []
         mapping = map_accounts("snaptrade", accounts, account_specs(), {}, warnings)
-        for a in accounts:
+        for a in everything:
+            if st.excluded(a):
+                print(f"  account: {a.institution} | {a.name} | {a.raw_type} | …{a.number[-4:]} -> skipped (exclude_account_types)")
+                continue
             key = mapping[a.external_id]
             tag = key if key in account_specs() else f"{key} (NOT IN CONFIG)"
             ret = "retirement" if is_retirement(a) else "taxable?"

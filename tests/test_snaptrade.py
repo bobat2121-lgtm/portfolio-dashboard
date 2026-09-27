@@ -125,3 +125,21 @@ def test_activities_paginate_and_start_from_last_known_date():
     assert len(snaps[0].transactions) == 1500
     assert client.calls[0]["start_date"] == date(2026, 9, 10)
     assert [c["offset"] for c in client.calls] == [0, 1000]
+
+
+def test_credit_cards_are_excluded_and_robinhood_splits_cleanly():
+    class Client(FakeSnapClient):
+        def list_user_accounts(self):
+            return _Resp([_acct("i", "Robinhood", "Robinhood Individual", "INDIVIDUAL", "1111"),
+                          _acct("c", "Robinhood", "Robinhood Crypto", "DIGITALASSET", "2222"),
+                          _acct("cc", "Robinhood", "Robinhood Credit Card", "CREDITCARD", "3333"),
+                          _acct("r", "Robinhood", "Robinhood Roth Ira", "ROTH_IRA", "4444")])
+
+    src = SnapTradeSource({"exclude_account_types": ["CREDITCARD"]}, client=Client([]))
+    accts = src.list_accounts()
+    assert [a.external_id for a in accts] == ["i", "c", "r"]
+    from portfolio.config import account_specs
+    warnings = []
+    mapping = map_accounts("snaptrade", accts, account_specs(), {}, warnings)
+    assert mapping == {"i": "robinhood_taxable", "c": "robinhood_crypto", "r": "robinhood_ira"}
+    assert not warnings

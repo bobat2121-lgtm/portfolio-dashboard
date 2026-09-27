@@ -42,9 +42,10 @@ def report_redacted(res: dict) -> None:
         if v["status"] == "error":
             _gh("error", f"{name} failed ({_kind(v.get('error'))}). Details on the dashboard's Sync tab.")
     for key, v in res["accounts"].items():
-        print(f"  {key}: {v['status']}")
+        name = "an account not in config" if v.get("unmapped") else key  # auto keys end in account digits
+        print(f"  {name}: {v['status']}")
         if v["status"] in ("error", "suspect"):
-            _gh("warning", f"{key}: {v['status']}. Details on the dashboard's Sync tab.")
+            _gh("warning", f"{name}: {v['status']}. Details on the dashboard's Sync tab.")
     notes = len(res["warnings"]) + sum(len(v.get("warnings", [])) + bool(v.get("reconcile")) for v in res["accounts"].values())
     if notes:
         _gh("notice", f"{notes} note(s) from this run. See the dashboard's Sync tab.")

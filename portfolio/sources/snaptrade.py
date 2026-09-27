@@ -204,8 +204,13 @@ class SnapTradeSource:
 
     # ------------------------------------------------------------ data
 
-    def list_accounts(self) -> list[m.SourceAccount]:
-        return [parse_account(a) for a in _body(self.client.account_information.list_user_accounts()) or []]
+    def list_accounts(self, include_excluded: bool = False) -> list[m.SourceAccount]:
+        accounts = [parse_account(a) for a in _body(self.client.account_information.list_user_accounts()) or []]
+        return accounts if include_excluded else [a for a in accounts if not self.excluded(a)]
+
+    def excluded(self, acct: m.SourceAccount) -> bool:
+        """Account types that aren't holdings, e.g. Robinhood's credit card (config: exclude_account_types)."""
+        return acct.raw_type.upper() in {t.upper() for t in self.settings.get("exclude_account_types") or []}
 
     def activities(self, account_id: str, start: date | None) -> list[m.Txn]:
         rows, offset, limit = [], 0, 1000
