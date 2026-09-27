@@ -60,7 +60,12 @@ h3::after { content: ""; display: block; width: 46px; height: 2px; margin-top: .
 .st-key-sw-header [data-testid="stButtonGroup"] { justify-content: flex-end; }
 .st-key-sw-header [data-testid^="stBaseButton"] p, .st-key-sw-header [data-testid="stLinkButton"] p { font-size: .62rem !important; letter-spacing: .03em !important; white-space: nowrap; }
 .st-key-sw-header [data-testid^="stBaseButton"], .st-key-sw-header [data-testid="stLinkButton"] a {
-  min-height: 2.1rem !important; padding: .3rem .95rem !important; }   /* snug around the label */
+  min-height: 2.1rem !important; padding: calc(.3rem + .25px) .95rem calc(.3rem - .25px) !important; }   /* snug; Orbitron caps ride a touch high */
+/* the small label gets its own line box, so it centres in the button instead of sitting on a 16px baseline */
+.st-key-sw-header [data-testid^="stBaseButton"] p, .st-key-sw-header [data-testid="stLinkButton"] a p { display: block; line-height: 1 !important; }
+/* beside the title, the buttons sit on the middle of its letters (Star Jedi's ink sits ~14px below the
+   middle of the header row); a transform, so nothing else moves. Stacked on phones, they stay put. */
+@media (min-width: 640px) { .st-key-sw-actions { transform: translateY(14.5px); } }
 [data-testid="stMetricDelta"] { font-family: var(--mono) !important; }
 
 /* the headline deck: total value and YTD return as hero tags, six even readouts beside them */
