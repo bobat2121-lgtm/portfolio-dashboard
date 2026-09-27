@@ -36,7 +36,8 @@ def _kind(text: str | None) -> str:
 def report_redacted(res: dict) -> None:
     print(f"sync {res['status']}")
     for name, v in res["sources"].items():
-        detail = v.get("reason") if v["status"] == "skipped" and "not set" in (v.get("reason") or "") else ""
+        reason = v.get("reason") or ""
+        detail = (reason if "not set" in reason else "(synced recently)") if v["status"] == "skipped" else ""
         detail = detail or (_kind(v.get("error")) if v["status"] == "error" else "")
         print(f"  source {name}: {v['status']} {detail}".rstrip())
         if v["status"] == "error":
@@ -105,7 +106,9 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         report_redacted(res)
     if res["status"] == "skipped":
-        _gh("notice", "No source is configured yet (see README: secrets). Nothing to do.")
+        unset = all("not set" in (v.get("reason") or "") for v in res["sources"].values())
+        _gh("notice", "No source is configured yet (see README: secrets). Nothing to do." if unset
+            else "Every source synced within its minimum gap. Nothing to do this run.")
     return 1 if res["status"] == "error" else 0
 
 

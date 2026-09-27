@@ -16,6 +16,10 @@ on:
         description: "Ask SnapTrade to re-pull brokers first"
         type: boolean
         default: false
+      force:
+        description: "Run even if a source synced in the last few minutes"
+        type: boolean
+        default: false
 
 concurrency:
   group: sync
@@ -65,5 +69,7 @@ jobs:
       - name: Sync
         if: steps.cfg.outputs.ok == 'true'
         env:
+          TRIGGER: ${{ github.event_name == 'workflow_dispatch' && 'manual' || 'schedule' }}
           REFRESH: ${{ inputs.refresh && '--refresh' || '' }}
-        run: python -m jobs.sync --trigger schedule $REFRESH
+          FORCE: ${{ inputs.force && '--force' || '' }}
+        run: python -m jobs.sync --trigger "$TRIGGER" $REFRESH $FORCE
