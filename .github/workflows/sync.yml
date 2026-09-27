@@ -1,8 +1,11 @@
 name: sync
 
 # Pull every account into Postgres. Every 30 min through the US trading day (and an hour either side),
-# every 4 h around the clock for crypto. About 600 runs a month, well inside a private repo's free
-# 2,000 Actions minutes. Times are UTC; GitHub may start scheduled runs a few minutes late.
+# every 4 h around the clock for crypto. Times are UTC; GitHub may start scheduled runs a few minutes late.
+#
+# Security: runs only on the schedule or when you press "Run workflow" (never on pull requests, so a
+# fork can't reach the secrets). Third-party actions are pinned to exact commits, packages are
+# installed by hash, the token is read-only, and the log never shows balances (jobs/sync.py redacts it).
 on:
   schedule:
     - cron: "7,37 12-22 * * 1-5"
@@ -31,6 +34,7 @@ jobs:
       SNAPTRADE_CONSUMER_KEY: ${{ secrets.SNAPTRADE_CONSUMER_KEY }}
       KRAKEN_API_KEY: ${{ secrets.KRAKEN_API_KEY }}
       KRAKEN_API_SECRET: ${{ secrets.KRAKEN_API_SECRET }}
+      PORTFOLIO_CONFIG: ${{ secrets.PORTFOLIO_CONFIG }}
     steps:
       - name: Secrets configured?
         id: cfg
@@ -42,20 +46,24 @@ jobs:
             echo "ok=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         if: steps.cfg.outputs.ok == 'true'
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         if: steps.cfg.outputs.ok == 'true'
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: requirements-sync.txt
+          cache-dependency-path: requirements-sync.lock
 
-      - name: Install dependencies
+      - name: Install dependencies (exact versions, verified by hash)
         if: steps.cfg.outputs.ok == 'true'
-        run: pip install -q -r requirements-sync.txt
+        run: pip install -q --require-hashes --no-deps -r requirements-sync.lock
 
       - name: Sync
         if: steps.cfg.outputs.ok == 'true'
-        run: python -m jobs.sync --trigger schedule ${{ inputs.refresh && '--refresh' || '' }}
+        env:
+          REFRESH: ${{ inputs.refresh && '--refresh' || '' }}
+        run: python -m jobs.sync --trigger schedule $REFRESH

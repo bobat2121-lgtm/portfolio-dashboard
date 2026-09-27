@@ -1,0 +1,4 @@
+# Local work: the dashboard plus the sync job and tests.
+-r requirements.txt
+snaptrade-python-sdk==13.0.26
+pytest

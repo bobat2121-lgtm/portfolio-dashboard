@@ -12,7 +12,7 @@ from datetime import timedelta
 import pandas as pd
 import streamlit as st
 
-from panel.common import boot, gate, live_quotes, load
+from panel.common import boot, can_sync_here, gate, live_quotes, load
 
 if "--demo" in sys.argv:
     os.environ["DEMO"] = "1"
@@ -22,6 +22,7 @@ boot()
 gate()
 
 from portfolio import queries, sync  # noqa: E402  (after boot: secrets must be in env first)
+from portfolio.config import section  # noqa: E402
 from portfolio.timeutil import utcnow  # noqa: E402
 
 USD = st.column_config.NumberColumn(format="dollar")
@@ -30,9 +31,13 @@ QTY = st.column_config.NumberColumn(format="%.6g")
 
 # ---------------------------------------------------------------- data
 
-accounts = load("accounts")
-stored = load("holdings")
-cash = load("cash")
+try:
+    accounts = load("accounts")
+    stored = load("holdings")
+    cash = load("cash")
+except Exception:  # noqa: BLE001 - e.g. read-only login before the first sync has created the tables
+    st.info("The database isn't ready yet. It fills in after the first sync runs.")
+    st.stop()
 wanted = frozenset(queries.wanted_quotes(stored)) if not stored.empty else frozenset()
 quotes, quote_errors = live_quotes(wanted) if wanted else ({}, [])
 holdings = queries.reprice(stored, quotes) if not stored.empty else stored
@@ -43,12 +48,16 @@ totals = queries.totals(holdings, cash) if not accounts.empty else None
 left, right = st.columns([4, 1])
 left.title("Portfolio")
 with right:
-    if st.button("Sync now", width="stretch", help="Pull every account now (asks SnapTrade to refresh too)"):
-        with st.spinner("Syncing accounts…"):
-            res = sync.run(trigger="manual", refresh=True)
-        st.cache_data.clear()
-        st.session_state["_last_sync"] = res
-        st.rerun()
+    if can_sync_here():
+        if st.button("Sync now", width="stretch", help="Pull every account now (asks SnapTrade to refresh too)"):
+            with st.spinner("Syncing accounts…"):
+                res = sync.run(trigger="manual", refresh=True)
+            st.cache_data.clear()
+            st.session_state["_last_sync"] = res
+            st.rerun()
+    elif url := section("app").get("sync_workflow_url"):
+        st.link_button("Sync now (GitHub)", url, width="stretch",
+                       help="Opens the sync workflow on GitHub: press 'Run workflow', then refresh here in a minute")
     if st.button("Refresh prices", width="stretch"):
         live_quotes.clear()
         st.rerun()
@@ -60,8 +69,7 @@ if res := st.session_state.pop("_last_sync", None):
         "  \n" + "  \n".join(skipped) if skipped else ""))
 
 if accounts.empty:
-    st.info("No data yet. Add your SnapTrade and Kraken keys (see README), then press **Sync now** "
-            "or run `python -m jobs.sync`.")
+    st.info("No data yet. It appears after the first sync (GitHub Actions, or `python -m jobs.sync` locally).")
     st.stop()
 
 last_sync = accounts["last_synced_at"].max()

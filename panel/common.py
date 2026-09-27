@@ -3,8 +3,13 @@ from __future__ import annotations
 
 import hmac
 import os
+import time
 
 import streamlit as st
+
+MIN_PASSWORD = 16
+MAX_TRIES = 5
+LOCKOUT_SECONDS = 300
 
 
 def boot() -> None:
@@ -18,24 +23,48 @@ def boot() -> None:
 
 
 def gate() -> None:
-    """APP_PASSWORD set = nobody sees a number without it. Unset = local dev, open."""
+    """Nothing loads until the password is right. Against the real database (Postgres) there is no way
+    around it: a missing or short APP_PASSWORD locks the app instead of opening it. Local SQLite and
+    demo data stay open."""
     from portfolio.config import env
     from portfolio.db import is_postgres
 
-    pw = env("APP_PASSWORD")
-    if not pw:
-        if is_postgres():
-            st.warning("APP_PASSWORD isn't set, so anyone who can reach this app can see your balances.")
+    pw = env("APP_PASSWORD") or ""
+    if not is_postgres() and not pw:
         return
+    if len(pw) < MIN_PASSWORD:
+        st.error(f"Locked: set APP_PASSWORD (at least {MIN_PASSWORD} characters) in the app's secrets.")
+        st.stop()
     if st.session_state.get("_ok"):
         return
-    entered = st.text_input("Password", type="password")
-    if entered and hmac.compare_digest(entered.encode(), pw.encode()):
-        st.session_state["_ok"] = True
-        st.rerun()
-    elif entered:
+
+    locked_until = st.session_state.get("_locked_until", 0.0)
+    if time.time() < locked_until:
+        st.error(f"Too many wrong passwords. Try again in {int(locked_until - time.time()) + 1} s.")
+        st.stop()
+    with st.form("unlock", clear_on_submit=True):
+        entered = st.text_input("Password", type="password")
+        submitted = st.form_submit_button("Unlock")
+    if submitted and entered:
+        if hmac.compare_digest(entered.encode(), pw.encode()):
+            st.session_state["_ok"] = True
+            st.session_state.pop("_tries", None)
+            st.rerun()
+        time.sleep(1.5)  # slows guessing; the real defense is a long random password
+        tries = st.session_state.get("_tries", 0) + 1
+        st.session_state["_tries"] = tries
+        if tries >= MAX_TRIES:
+            st.session_state["_locked_until"] = time.time() + LOCKOUT_SECONDS
+            st.session_state["_tries"] = 0
         st.error("Wrong password.")
     st.stop()
+
+
+def can_sync_here() -> bool:
+    """Broker keys live only in GitHub Actions (and your local .env), never in the cloud app."""
+    from portfolio.sources import all_sources
+
+    return any(src.missing_config() is None for src in all_sources())
 
 
 @st.cache_data(ttl=60, show_spinner=False)

@@ -5,11 +5,11 @@ account into Postgres, so buys, sells and deposits show up without you doing any
 permanent history of holdings, values and transactions.
 
 ```
- Fidelity ─┐                                             ┌─ GitHub Actions (every 30 min in market hours,
- Robinhood ┼─ SnapTrade Personal (free, read-only) ─┐    │  every 4 h otherwise): python -m jobs.sync
- RH IRA ───┘                                        ├─ portfolio/sync.py ─→ Neon Postgres ─→ Streamlit app
- Kraken ─────── Kraken API (read-only key) ─────────┘    │                                    (+ "Sync now")
- Yahoo / Kraken ticker ── live prices between syncs ─────┘
+ Fidelity ─┐                                              GitHub Actions (holds the broker keys)
+ Robinhood ┼─ SnapTrade Personal (read-only) ─┐           every 30 min in market hours, 4 h otherwise
+ RH IRA ───┘                                  ├─ jobs.sync ──write──→ Neon Postgres ──read-only──→ Streamlit app
+ Kraken ─────── Kraken API (read-only key) ───┘                                            (password; no broker keys)
+ Yahoo / Kraken public ticker ── live prices, no keys
 ```
 
 ## How fresh is the data?
@@ -26,39 +26,76 @@ Two things cover the gap:
 - **Live prices.** Values are re-priced from Yahoo (stocks, ETFs, funds) and Kraken's public ticker
   (crypto) on every sync and every time the dashboard opens. Broker prices are the fallback.
 
-The dashboard's **Sync now** button also asks SnapTrade to re-pull the brokers (`refresh: manual` in config).
+The cloud dashboard's **Sync now** opens the workflow on GitHub; press *Run workflow* there (tick refresh to also
+ask SnapTrade to re-pull the brokers). Run locally with keys in `.env`, the button syncs in place.
 
 ## Setup (one time)
 
-**1. Database.** In Neon, create a database named `portfolio`. A new database inside your existing Neon
-project is fine. Copy its connection string: that's `DATABASE_URL`.
+Keys and passwords go only into `.env` (on your PC), GitHub secrets and Streamlit secrets. Never into chat,
+code or config files.
 
-**2. SnapTrade (Fidelity + Robinhood).** Sign up at <https://dashboard.snaptrade.com/signup>. The
-Personal plan is free and needs no card. Create a Personal API key and copy the client ID and consumer
-key. Connect Fidelity and Robinhood with **read-only** access, either from the SnapTrade dashboard or
-with `python -m jobs.link --portal`. Your broker passwords go to SnapTrade's portal, never into this app.
+**1. Database.** Neon → your project → **Connect** (top right of the project dashboard). Leave branch `main`,
+set **Connection pooling off** and copy the `postgresql://…` string into `.env` as `DATABASE_URL`.
 
-**3. Kraken.** Go to Settings → API → Create key. Tick **only** *Query Funds* and *Query Ledger Entries*.
-No trading, no withdrawals. Copy the key and the private key.
+**2. SnapTrade (Fidelity + Robinhood).** At <https://dashboard.snaptrade.com> turn on two-factor login,
+then create your Personal key at <https://dashboard.snaptrade.com/api-key>. Put the client ID and consumer
+key in `.env`. Connect Fidelity and Robinhood from the dashboard. SnapTrade uses each broker's own
+read-only login page, and its Fidelity and Robinhood integrations cannot place trades at all.
 
-**4. Try it locally.**
+**3. Kraken.** Settings → API → Create key. Tick **only** *Query Funds* and *Query Ledger Entries*.
+Leave Deposit, Withdraw, Trade/Orders, Earn, Export and WebSockets off. Put the key and private key in `.env`.
+
+**4. First run (locally).**
 ```powershell
-copy .env.example .env        # fill in the values from steps 1-3 (DATABASE_URL optional locally)
-.venv\Scripts\python -m jobs.link             # shows each linked account and which config key it maps to
+.venv\Scripts\python -m jobs.link             # each linked account and the config key it maps to
 .venv\Scripts\python -m jobs.sync --dry-run   # fetch + price everything, write nothing
 .venv\Scripts\python -m jobs.sync             # first real sync (reads your whole Kraken ledger: a few minutes)
-.venv\Scripts\streamlit run streamlit_app.py
+.venv\Scripts\python -m jobs.readonly_login   # read-only DB login for the dashboard -> .env DATABASE_URL_READONLY
 ```
-If `jobs.link` says an account is `NOT IN CONFIG` or ambiguous, edit `match:` in
-[config/portfolio.yaml](config/portfolio.yaml). The easiest fix is `number_last4`.
+If `jobs.link` says an account is ambiguous, pin it with `number_last4`, but in the `PORTFOLIO_CONFIG`
+secret, not the committed YAML (see [config/portfolio.yaml](config/portfolio.yaml)).
 
-**5. GitHub.** Push to a **private** repo. Add Actions secrets `DATABASE_URL`, `SNAPTRADE_CLIENT_ID`,
-`SNAPTRADE_CONSUMER_KEY`, `KRAKEN_API_KEY` and `KRAKEN_API_SECRET`. The `sync` workflow then runs on
-its schedule. You can also run it by hand from the Actions tab, with an optional SnapTrade refresh.
+**5. GitHub Actions secrets** (repo → Settings → Secrets and variables → Actions): `DATABASE_URL` (the
+owner string), `SNAPTRADE_CLIENT_ID`, `SNAPTRADE_CONSUMER_KEY`, `KRAKEN_API_KEY`, `KRAKEN_API_SECRET`, and
+optionally `PORTFOLIO_CONFIG`.
 
-**6. Streamlit Cloud.** Deploy from the private repo with main file `streamlit_app.py` and Python 3.12.
-Paste the secrets from [.streamlit/secrets.toml.example](.streamlit/secrets.toml.example) and include
-`APP_PASSWORD`. Under Sharing, pick "Only specific people can view this app".
+**6. Streamlit Cloud secrets**: only `DATABASE_URL` (the **read-only** string from step 4) and
+`APP_PASSWORD` (make one with `python -c "import secrets; print(secrets.token_urlsafe(24))"`).
+Main file `streamlit_app.py`, Python 3.12.
+
+## Security model
+
+**What each key can do, if someone stole it:**
+
+| Secret | Lives in | Worst case if stolen |
+|---|---|---|
+| SnapTrade consumer key | GitHub secrets, your `.env` | read your holdings/transactions. Can't trade (the Fidelity and Robinhood integrations don't support it; connections are read-only), can't log in to your brokers, can't move money |
+| Kraken API key | GitHub secrets, your `.env` | read balances and ledger. No trade, deposit or withdraw permission exists on the key |
+| DB owner URL | GitHub secrets, your `.env` | read or alter the dashboard's copy of your data. It holds no broker credentials |
+| DB read-only URL | Streamlit secrets | read the dashboard's copy of your data |
+| APP_PASSWORD | Streamlit secrets | view the dashboard |
+
+Nothing in this project can log in to Fidelity, Robinhood or Kraken, trade, or move money. Those
+abilities stay behind your own logins and 2FA at each company, which this project never sees.
+
+**Guards in the code:**
+- **Nothing on the dashboard loads before the password.** Against the real database, a missing or short
+  (<16 characters) `APP_PASSWORD` locks the app instead of opening it. Wrong guesses are slowed down and
+  locked out, and visitors never see error details.
+- **The cloud app holds no broker keys.** It reads the database through a login that is not allowed to write.
+- **Actions logs are redacted.** They show no amounts, symbols, account names or error text. Details
+  stay in the database, on the Sync tab.
+- **The workflow never runs on pull requests.** Its token is read-only, actions are pinned to exact
+  commits, and packages are installed from a hash-checked lockfile.
+- **Nothing personal is committed.** Pins and cost-basis overrides go in the `PORTFOLIO_CONFIG` secret.
+
+**Settings to keep:** 2FA on GitHub, Streamlit (it signs in through GitHub), Neon, SnapTrade and Kraken.
+No collaborators on the repo. Streamlit's own sharing set to what you want (public is fine: the password gate
+covers it).
+
+**Rotating a key** (if you ever suspect a leak): delete it at the provider (SnapTrade API key page, Kraken
+API page, Neon role password), create a new one, and update `.env` and the GitHub/Streamlit secrets.
+`python -m jobs.readonly_login` rotates the read-only DB password.
 
 ## Commands
 
@@ -70,6 +107,7 @@ Paste the secrets from [.streamlit/secrets.toml.example](.streamlit/secrets.toml
 | `python -m jobs.sync --refresh` | ask SnapTrade to re-pull brokers first |
 | `python -m jobs.sync --force` | skip the min-gap and empty-holdings guard |
 | `python -m jobs.link [--portal]` | check connections and account mapping / get a connect link |
+| `python -m jobs.readonly_login` | create or rotate the dashboard's read-only DB login |
 | `python -m jobs.demo` | made-up data in `data/demo.db` for UI work, then `streamlit run streamlit_app.py -- --demo` |
 | `python -m pytest` | tests (no network) |
 
@@ -109,7 +147,7 @@ Nothing is ever deleted. When you exit a position, its row stays at quantity 0 w
 
 ```
 portfolio/       config, db (schema), models, sources/{snaptrade,kraken}, prices, costbasis, sync, queries
-jobs/            sync, link, demo (CLI entry points)
+jobs/            sync, link, readonly_login, demo (CLI entry points)
 panel/           Streamlit plumbing (secrets, password gate, caches)
 streamlit_app.py the dashboard (plain; styling comes next)
 config/portfolio.yaml   account map + knobs

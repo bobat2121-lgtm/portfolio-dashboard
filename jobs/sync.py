@@ -5,11 +5,18 @@
     python -m jobs.sync --only kraken   # one source
     python -m jobs.sync --refresh       # ask SnapTrade to re-pull the brokers first
     python -m jobs.sync --force         # ignore min gaps and the empty-holdings guard
+
+On GitHub Actions (or with --redact) the output carries no dollar amounts, symbols, account names or
+error text, because Actions logs can be read by anyone who can see the repo. The full summary of every
+run is kept in the database and shown on the dashboard's Sync tab, behind the password.
 """
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import json
+import logging
 import os
 import sys
 
@@ -21,6 +28,52 @@ def _gh(level: str, msg: str) -> None:
     print(f"::{level}::{msg}" if os.environ.get("GITHUB_ACTIONS") else f"[{level}] {msg}")
 
 
+def _kind(text: str | None) -> str:
+    """'ApiException (401) Reason: Unauthorized ...' -> 'ApiException'. Keeps the class, drops the detail."""
+    return (text or "").split(":")[0].split(" ")[0] or "error"
+
+
+def report_redacted(res: dict) -> None:
+    print(f"sync {res['status']}")
+    for name, v in res["sources"].items():
+        detail = v.get("reason") if v["status"] == "skipped" and "not set" in (v.get("reason") or "") else ""
+        detail = detail or (_kind(v.get("error")) if v["status"] == "error" else "")
+        print(f"  source {name}: {v['status']} {detail}".rstrip())
+        if v["status"] == "error":
+            _gh("error", f"{name} failed ({_kind(v.get('error'))}). Details on the dashboard's Sync tab.")
+    for key, v in res["accounts"].items():
+        print(f"  {key}: {v['status']}")
+        if v["status"] in ("error", "suspect"):
+            _gh("warning", f"{key}: {v['status']}. Details on the dashboard's Sync tab.")
+    notes = len(res["warnings"]) + sum(len(v.get("warnings", [])) + bool(v.get("reconcile")) for v in res["accounts"].values())
+    if notes:
+        _gh("notice", f"{notes} note(s) from this run. See the dashboard's Sync tab.")
+
+
+def report_full(res: dict, dry_run: bool) -> None:
+    print(f"sync {res['status']}{' (dry run, nothing written)' if dry_run else ''}")
+    for name, v in res["sources"].items():
+        print(f"  source {name}: {v['status']}  {v.get('reason') or v.get('error') or ''}".rstrip())
+    for key, v in res["accounts"].items():
+        bits = [v["status"]]
+        if "total" in v:
+            bits.append(f"${v['total']:,.2f}")
+        for k in ("positions", "transactions", "changes"):
+            if k in v:
+                bits.append(f"{v[k]} {k}")
+        if v.get("unmapped"):
+            bits.append("NOT IN CONFIG")
+        if v.get("error"):
+            bits.append(v["error"])
+        print(f"  {key}: " + " · ".join(bits))
+        if v.get("reconcile"):
+            print(f"    note: {v['reconcile']}")
+        for w in v.get("warnings", []):
+            print(f"    warning: {w}")
+    for w in res["warnings"]:
+        print(f"  warning: {w}")
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--only", choices=["snaptrade", "kraken"])
@@ -28,38 +81,28 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--trigger", default="cli")
+    ap.add_argument("--redact", action="store_true", help="public-log mode (automatic on GitHub Actions)")
     ap.add_argument("--json", action="store_true", help="print the full summary as JSON")
     args = ap.parse_args(argv)
+    redact = args.redact or bool(os.environ.get("GITHUB_ACTIONS"))
 
-    res = sync.run(trigger=args.trigger, only=args.only, refresh=args.refresh, dry_run=args.dry_run, force=args.force)
-    if args.json:
-        print(json.dumps(res, indent=2, default=str))
+    kwargs = dict(trigger=args.trigger, only=args.only, refresh=args.refresh, dry_run=args.dry_run, force=args.force)
+    if not redact:
+        res = sync.run(**kwargs)
+        if args.json:
+            print(json.dumps(res, indent=2, default=str))
+        else:
+            report_full(res, args.dry_run)
     else:
-        print(f"sync {res['status']}{' (dry run, nothing written)' if args.dry_run else ''}")
-        for name, v in res["sources"].items():
-            print(f"  source {name}: {v['status']}  {v.get('reason') or v.get('error') or ''}".rstrip())
-        for key, v in res["accounts"].items():
-            bits = [v["status"]]
-            if "total" in v:
-                bits.append(f"${v['total']:,.2f}")
-            for k in ("positions", "transactions", "changes"):
-                if k in v:
-                    bits.append(f"{v[k]} {k}")
-            if v.get("unmapped"):
-                bits.append("NOT IN CONFIG")
-            print(f"  {key}: " + " · ".join(bits))
-    for name, v in res["sources"].items():
-        if v["status"] == "error":
-            _gh("error", f"{name}: {v['error']}")
-    for key, v in res["accounts"].items():
-        if v["status"] in ("error", "suspect"):
-            _gh("warning", f"{key}: {v.get('error')}")
-        if v.get("reconcile"):
-            _gh("notice", f"{key}: {v['reconcile']}")
-        for w in v.get("warnings", []):
-            _gh("warning", f"{key}: {w}")
-    for w in res["warnings"]:
-        _gh("warning", w)
+        # Libraries (yfinance, SDK retries) print symbols and URLs; swallow all of it in public logs.
+        logging.disable(logging.CRITICAL)
+        try:
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                res = sync.run(**kwargs)
+        except Exception as e:  # noqa: BLE001 - a traceback would print hostnames and data
+            _gh("error", f"sync crashed ({type(e).__name__}). Run `python -m jobs.sync` locally for details.")
+            return 1
+        report_redacted(res)
     if res["status"] == "skipped":
         _gh("notice", "No source is configured yet (see README: secrets). Nothing to do.")
     return 1 if res["status"] == "error" else 0

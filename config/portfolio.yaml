@@ -6,6 +6,9 @@
 #   id: the provider's account id (strongest pin; `python -m jobs.link` prints it)
 # If a rule matches more than one account, the sync warns and asks you to pin it (number_last4 is easiest).
 # Accounts a source finds that aren't listed here are still tracked, under a key like fidelity_1234.
+#
+# This file is committed. Put anything personal (number_last4 / id pins, cost_basis_overrides) in the
+# PORTFOLIO_CONFIG secret instead: same shape, merged on top of this file (see portfolio/config.py).
 accounts:
   fidelity_taxable:
     label: Fidelity Taxable
@@ -35,7 +38,8 @@ accounts:
     source: kraken
     match: {}
     # Kraken doesn't report cost basis, so it's worked out from your ledger (average cost). Coins you
-    # deposited from another wallet have no known cost; put their total $ basis here, e.g. {BTC: 25000}.
+    # deposited from another wallet have no known cost: set their total $ basis in the PORTFOLIO_CONFIG
+    # secret, e.g. accounts: {kraken: {cost_basis_overrides: {BTC: 25000}}}. Not here: this file is committed.
     cost_basis_overrides: {}
 
 sources:
@@ -48,6 +52,10 @@ sources:
     enabled: true
     min_minutes_between_syncs: 1
     overlap_days: 3
+
+app:
+  # The cloud dashboard holds no broker keys, so its Sync button opens this workflow to run it on GitHub.
+  sync_workflow_url: ""
 
 pricing:
   # Held at $1 and grouped as cash (Fidelity core / money-market sweep funds).

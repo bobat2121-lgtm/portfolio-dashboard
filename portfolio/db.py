@@ -19,6 +19,7 @@ from sqlalchemy import (
     UniqueConstraint,
     create_engine,
 )
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
 from portfolio.config import DATA_DIR, env
@@ -200,7 +201,10 @@ def engine():
         if url.startswith("sqlite"):
             kwargs["connect_args"] = {"check_same_thread": False, "timeout": 30}
         _engine = create_engine(url, **kwargs)
-        Base.metadata.create_all(_engine)
+        try:
+            Base.metadata.create_all(_engine)
+        except ProgrammingError:
+            pass  # read-only login (the dashboard): the sync job, which can write, creates tables
     return _engine
 
 

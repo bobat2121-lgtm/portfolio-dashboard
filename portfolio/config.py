@@ -1,6 +1,12 @@
-"""Settings: config/portfolio.yaml for the account map and knobs; env vars (or .env) for secrets."""
+"""Settings: config/portfolio.yaml for the account map and knobs; env vars (or .env) for secrets.
+
+Anything personal (account-number pins, cost-basis overrides) goes in the PORTFOLIO_CONFIG secret instead
+of the committed YAML. It's YAML in the same shape, merged on top, e.g.
+    accounts: {robinhood_ira: {match: {number_last4: "1234"}}, kraken: {cost_basis_overrides: {BTC: 25000}}}
+"""
 from __future__ import annotations
 
+import copy
 import os
 from functools import lru_cache
 from pathlib import Path
@@ -20,11 +26,22 @@ def env(name: str, default: str | None = None) -> str | None:
     return v if v not in (None, "") else default
 
 
+def deep_merge(base, override):
+    if isinstance(base, dict) and isinstance(override, dict):
+        out = copy.deepcopy(base)
+        for k, v in override.items():
+            out[k] = deep_merge(base.get(k), v) if k in base else copy.deepcopy(v)
+        return out
+    return copy.deepcopy(override if override is not None else base)
+
+
 @lru_cache(maxsize=None)
 def settings() -> dict:
-    if not CONFIG_PATH.exists():
-        return {}
-    return yaml.safe_load(CONFIG_PATH.read_text(encoding="utf-8")) or {}
+    base = {}
+    if CONFIG_PATH.exists():
+        base = yaml.safe_load(CONFIG_PATH.read_text(encoding="utf-8")) or {}
+    private = env("PORTFOLIO_CONFIG")
+    return deep_merge(base, yaml.safe_load(private) or {}) if private else base
 
 
 def section(name: str) -> dict:

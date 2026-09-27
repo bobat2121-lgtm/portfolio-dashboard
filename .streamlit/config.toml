@@ -3,3 +3,8 @@ headless = true
 
 [browser]
 gatherUsageStats = false
+
+[client]
+# Visitors never see tracebacks or error text (they can name hosts and files). Read the app logs instead.
+showErrorDetails = "none"
+toolbarMode = "minimal"
