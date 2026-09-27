@@ -102,7 +102,7 @@ API page, Neon role password), create a new one, and update `.env` and the GitHu
 | Tab | What it shows |
 |---|---|
 | **Accounts** | value by account, allocation by asset class and by taxable/IRA, value over time |
-| **Assets** | every holding with all accounts combined (BTC on Kraken + Robinhood = one BTC, MSTR in taxable + IRA = one MSTR, all cash = one Cash), as cards, a chart colored by gain/loss, and a table |
+| **Assets** (opens first) | every holding with all accounts combined (BTC on Kraken + Robinhood = one BTC, MSTR in taxable + IRA = one MSTR, all cash = one Cash), as cards |
 | **Themes** | holdings grouped by theme (Bitcoin, Bitcoin treasuries, digital credit, crypto, stocks & funds, cash), your Bitcoin-linked share, and a switch to price everything in BTC. Edit the themes in `config/portfolio.yaml`; options follow their underlying |
 | **Star map** | the portfolio as a star system: each theme an orbit, each holding a planet sized by value, a green/red halo for gain/loss, a moon for each extra account holding it |
 | **Briefing** | a Star Wars opening crawl written from today's numbers: the episode is the day count since your first sync, the title follows the day's move |

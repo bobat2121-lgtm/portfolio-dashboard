@@ -49,7 +49,7 @@ def esc(s) -> str:
     return html.escape(str(s))
 
 
-# ---------------------------------------------------------------- 1. by asset
+# ---------------------------------------------------------------- 1. by asset (the main tab)
 
 def assets_view(assets: pd.DataFrame) -> None:
     if assets.empty:
@@ -57,7 +57,7 @@ def assets_view(assets: pd.DataFrame) -> None:
         return
     shown = assets[assets["market_value"] >= 1]
     cards = []
-    for r in shown.head(8).itertuples():
+    for r in shown.itertuples():
         pnl = "" if pd.isna(r.unrealized) or r.asset == lenses.CASH_ASSET else (
             f'<span class="{tone(r.unrealized)}">{usd(r.unrealized, signed=True)} ({pct(r.unrealized_pct, True)})</span>')
         day = f'<span class="{tone(r.day_change)}">{usd(r.day_change, signed=True)} today</span>' if abs(r.day_change) >= 0.5 else ""
@@ -70,35 +70,6 @@ def assets_view(assets: pd.DataFrame) -> None:
             f'<div class="sw-bar"><i style="width:{max(1.5, r.weight * 100):.1f}%"></i></div>'
             f'<div class="sw-row">{pnl}{day}</div><div class="sw-chips">{chips}</div></div>')
     st.html(f'<div class="sw-cards">{"".join(cards)}</div>')
-
-    d = shown.assign(pnl=shown["unrealized_pct"].fillna(0.0), accounts_txt=shown["accounts"].map(", ".join))
-    chart = alt.Chart(d).mark_bar(cornerRadius=0, height={"band": 0.7}).encode(
-        y=alt.Y("asset:N", sort="-x", title=None, axis=alt.Axis(labelLimit=220, labelOverlap=False)),
-        x=alt.X("market_value:Q", title=None, axis=alt.Axis(format="$,.0f", grid=False)),
-        color=alt.Color("pnl:Q", title="Unrealized", legend=alt.Legend(format="%", orient="bottom"),
-                        scale=alt.Scale(domain=[-0.5, 0, 0.5], range=[DOWN, FLAT, UP], clamp=True, interpolate="rgb")),
-        tooltip=[alt.Tooltip("asset:N", title="Asset"), alt.Tooltip("market_value:Q", title="Value", format="$,.2f"),
-                 alt.Tooltip("weight:Q", title="Weight", format=".1%"),
-                 alt.Tooltip("unrealized:Q", title="Unrealized", format="$,.2f"),
-                 alt.Tooltip("accounts_txt:N", title="Held in")],
-    ).properties(height=max(140, 34 * len(d)))
-    st.altair_chart(chart, width="stretch")
-
-    st.dataframe(
-        assets[["asset", "quantity", "price", "market_value", "weight", "day_change", "cost_basis", "unrealized",
-                "unrealized_pct", "accounts"]],
-        hide_index=True, width="stretch",
-        column_config={
-            "asset": "Asset", "quantity": st.column_config.NumberColumn("Qty", format="%.6g"),
-            "price": st.column_config.NumberColumn("Price", format="dollar"),
-            "market_value": st.column_config.NumberColumn("Value", format="dollar"),
-            "weight": st.column_config.ProgressColumn("Weight", format="percent", min_value=0.0, max_value=1.0, color="#FFE81F"),
-            "day_change": st.column_config.NumberColumn("Today", format="dollar"),
-            "cost_basis": st.column_config.NumberColumn("Cost basis", format="dollar"),
-            "unrealized": st.column_config.NumberColumn("Unrealized", format="dollar"),
-            "unrealized_pct": st.column_config.NumberColumn("Unrealized %", format="percent"),
-            "accounts": st.column_config.ListColumn("Held in"),
-        })
 
 
 # ---------------------------------------------------------------- 2. by theme

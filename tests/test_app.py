@@ -32,7 +32,7 @@ def test_dashboard_renders_with_data(tmp_db, monkeypatch):
     assert not at.exception, at.exception
     labels = [mt.label for mt in at.metric]
     assert labels == ["Total", "Today", "Cost basis", "Invested", "Cash", "Unrealized"]
-    assert [t.label for t in at.tabs] == ["Accounts", "Assets", "Themes", "Star map", "Briefing", "Positions", "Activity", "Sync"]
+    assert [t.label for t in at.tabs] == ["Assets", "Accounts", "Themes", "Star map", "Briefing", "Positions", "Activity", "Sync"]
 
 
 def test_password_gate_blocks_until_correct(tmp_db, monkeypatch):

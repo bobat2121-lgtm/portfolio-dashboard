@@ -108,9 +108,9 @@ c5.metric("Cash", f"${totals['cash']:,.2f}")
 c6.metric("Unrealized", f"${totals['unrealized']:,.2f}",
           help=f"Invested minus cost basis. Cost basis known for {totals['basis_coverage']:.0%} of invested value.")
 
-(overview, assets_tab, themes_tab, map_tab, brief_tab, holdings_tab, activity_tab,
+(assets_tab, overview, themes_tab, map_tab, brief_tab, holdings_tab, activity_tab,
  sync_tab) = st.container(key="sw-body").tabs(
-    ["Accounts", "Assets", "Themes", "Star map", "Briefing", "Positions", "Activity", "Sync"])
+    ["Assets", "Accounts", "Themes", "Star map", "Briefing", "Positions", "Activity", "Sync"])
 
 # ---------------------------------------------------------------- overview
 
