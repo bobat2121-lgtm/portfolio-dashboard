@@ -55,7 +55,7 @@ Leave Deposit, Withdraw, Trade/Orders, Earn, Export and WebSockets off. Put the 
 If `jobs.link` says an account is ambiguous, pin it with `number_last4`, but in the `PORTFOLIO_CONFIG`
 secret, not the committed YAML (see [config/portfolio.yaml](config/portfolio.yaml)).
 
-**5. GitHub Actions secrets** (repo → Settings → Secrets and variables → Actions): `DATABASE_URL` (the
+**5. GitHub Actions secrets.** Run `python -m jobs.push_secrets`, or add them by hand (repo → Settings → Secrets and variables → Actions): `DATABASE_URL` (the
 owner string), `SNAPTRADE_CLIENT_ID`, `SNAPTRADE_CONSUMER_KEY`, `KRAKEN_API_KEY`, `KRAKEN_API_SECRET`, and
 optionally `PORTFOLIO_CONFIG`.
 
@@ -108,6 +108,7 @@ API page, Neon role password), create a new one, and update `.env` and the GitHu
 | `python -m jobs.sync --force` | skip the min-gap and empty-holdings guard |
 | `python -m jobs.link [--portal]` | check connections and account mapping / get a connect link |
 | `python -m jobs.readonly_login` | create or rotate the dashboard's read-only DB login |
+| `python -m jobs.push_secrets [--dry-run]` | copy the sync job's secrets from `.env` to GitHub Actions (values never printed) |
 | `python -m jobs.demo` | made-up data in `data/demo.db` for UI work, then `streamlit run streamlit_app.py -- --demo` |
 | `python -m pytest` | tests (no network) |
 
