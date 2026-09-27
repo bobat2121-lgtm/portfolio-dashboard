@@ -3,7 +3,7 @@
  * Everything is drawn into a low-resolution canvas (one art pixel = PIX x PIX screen pixels) and scaled
  * up with image-rendering: pixelated. Layers, back to front: nebula + stars, distant Star Wars planets,
  * far events, the solar system (sun, orbits, nine planets with real phases), mid events, the Death Star
- * and its TIE patrol, the rebel fleet, near events. Random events fire every 20 s - 2 min. Very rarely
+ * and its TIE patrol, the rebel fleet, near events. Random events fire every 12-72 s. Very rarely
  * the event is a black hole that swallows everything, dashboard included, until the page is reloaded.
  *
  * Test hooks: window.__space.trigger("supernova" | "blackhole" | ...), or ?space=EVENT_NAME in the URL.

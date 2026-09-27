@@ -25,7 +25,7 @@ STYLES = {"distinct": "Distinct", "melded": "Melded", "mix": "Mix"}
 DEFAULT_STYLE = "mix"
 EVENTS = {"shooting_star", "meteor_shower", "supernova", "comet", "asteroid", "pulsar", "hyperspace", "superlaser",
           "rebel_attack", "blackhole"}
-BLACK_HOLE_ODDS = 1 / 300  # per random event; events come every 20 s - 2 min, so roughly once in 6 hours
+BLACK_HOLE_ODDS = 1 / 300  # per random event; events come every 12-72 s, so roughly once in 3.5 hours
 
 
 @lru_cache(maxsize=1)
@@ -89,7 +89,7 @@ def apply(style: str) -> None:
     st.html(f"<style>{imports}{_font_face()}{rest}{variants}</style>")
     force = st.query_params.get("space")  # ?space=supernova etc., for trying events out
     cfg = {"style": style, "force": force if force in EVENTS else None, "odds": BLACK_HOLE_ODDS,
-           "minGap": 20, "maxGap": 120}
+           "minGap": 12, "maxGap": 72}
     js = _read("space.js").replace("__SPACE_CFG__", json.dumps(cfg))
     st.html(f'<div id="space-boot"></div><script>{js}</script>', unsafe_allow_javascript=True)
 

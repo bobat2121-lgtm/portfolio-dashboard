@@ -132,9 +132,9 @@ hyperspace; on down days it charges its superlaser.
 The dashboard sits over a pixel-art galaxy drawn live in the browser ([panel/assets/space.js](panel/assets/space.js)):
 twinkling stars and nebula, the nine planets orbiting the sun (with real phases, Saturn's rings and Earth's moon),
 Tatooine, Hoth, Mustafar and Endor far off, the Death Star with its TIE patrol on the left and the rebel fleet on
-the right. Every 20 s to 2 min something happens: a shooting star, meteor shower, supernova, comet, tumbling
+the right. Every 12 to 72 s something happens: a shooting star, meteor shower, supernova, comet, tumbling
 asteroid, pulsar, a fighter jumping to hyperspace, or the Death Star charging its superlaser. About once in 300
-events (roughly every 6 hours of viewing) a black hole opens, pulls everything in, swallows the dashboard and leaves
+events (roughly every 3.5 hours of viewing) a black hole opens, pulls everything in, swallows the dashboard and leaves
 the tab black until you reload.
 
 - **Panel style:** `mix` (floating header and numbers, solid data panels). The other two are still in the
