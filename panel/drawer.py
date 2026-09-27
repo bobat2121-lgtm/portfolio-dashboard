@@ -255,6 +255,10 @@ def render(r, ctx: dict) -> None:
     if r.asset_class == m.OPTION:
         under = ctx["assets"][ctx["assets"]["asset"] == r.underlying]
         spot = float(under["price"].iloc[0]) if not under.empty and pd.notna(under["price"].iloc[0]) else None
+        if spot is None:                                     # not held: its latest close
+            ph = ctx["prices"]
+            closes = ph[ph["symbol"] == yahoo_for(r.underlying, False)].sort_values("date")["close"] if not ph.empty else ph
+            spot = float(closes.iloc[-1]) if len(closes) else None
         opt = detail.option(r, spot, today)
     st.html(_head(r, since) + _summary(r, s, since) + (_option(opt) if opt else ""))
     _price_section(r, ctx, s, opt, detail.by_day(tr))

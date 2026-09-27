@@ -99,6 +99,13 @@ API page, Neon role password), create a new one, and update `.env` and the GitHu
 
 ## Ways to view it
 
+**Simulation** (the third button beside Sync now and Refresh prices, lit while on) swaps your accounts for a
+made-up, static portfolio worth $32,571: SPCX, MSTR, BTC, QQQ, an AAPL call and cash across four accounts, with a
+year of tranches, a few sales, dividends and invented prices ([portfolio/simulation.py](portfolio/simulation.py)).
+Every page, the ticker and the Taxes page read it instead of your data, so the dashboard can be shown to anyone.
+It starts on for every visit; press it to see your real portfolio, live. (It's built into a throwaway SQLite file
+per day; your real database is never touched.)
+
 Under the title, two hero tags: **Total value** (and what it is in bitcoin) and **YTD return** since Dec 31,
 money-weighted so deposits never count as gains, next to the same money held in bitcoin or the S&P 500 (hover it
 for the time-weighted figure). Beside them, six readouts: Bitcoin, Today, Unrealized, Invested, Cash, Cost basis.

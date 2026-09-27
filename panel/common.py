@@ -77,11 +77,34 @@ def can_sync_here() -> bool:
     return any(src.missing_config() is None for src in all_sources())
 
 
-@st.cache_data(ttl=60, show_spinner=False)
-def load(name: str, *args):
-    """Cached read of any portfolio.queries function by name."""
-    from portfolio import queries
+SIM = "sim"  # session_state key for the header's Simulation switch
 
+
+def simulated() -> bool:
+    """True while the Simulation switch is on: every page then reads the made-up portfolio in
+    portfolio/simulation.py instead of your accounts. It starts on for every new visit."""
+    return bool(st.session_state.setdefault(SIM, True))
+
+
+def toggle_simulation() -> None:
+    st.session_state[SIM] = not simulated()
+
+
+def load(name: str, *args):
+    """Cached read of any portfolio.queries function by name, from the real or the simulated database.
+    The mode is part of the cache key, so the two never mix."""
+    return _load("sim" if simulated() else "live", name, *args)
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def _load(mode: str, name: str, *args):
+    from portfolio import db, queries
+
+    if mode == "sim":
+        from portfolio import simulation
+
+        with db.using(simulation.db_url()):
+            return getattr(queries, name)(*args)
     return getattr(queries, name)(*args)
 
 
@@ -116,7 +139,12 @@ def portfolio_data() -> dict | None:
     watch = ticker_watch()
     wanted = frozenset((queries.wanted_quotes(stored) if not stored.empty else set()) | {BTC_QUOTE}
                        | {(venue, sym) for _, venue, sym in watch})
-    quotes, quote_errors = live_quotes(wanted)
+    if simulated():                                   # made-up prices: nothing live, nothing real
+        from portfolio import simulation
+
+        quotes, quote_errors = simulation.quotes(), []
+    else:
+        quotes, quote_errors = live_quotes(wanted)
     holdings = queries.reprice(stored, quotes) if not stored.empty else stored
     btc = quotes.get(BTC_QUOTE)
     assets = lenses.with_themes(lenses.combine_assets(holdings, cash))
@@ -166,7 +194,7 @@ def header(title: str) -> None:
     from portfolio.config import section
 
     box = st.container(key="sw-header")
-    left, right = box.columns([3, 2], vertical_alignment="center")
+    left, right = box.columns([11, 9], vertical_alignment="center")   # room for three buttons
     left.title(title)
     # the buttons hug their labels, side by side on the right
     with right.container(horizontal=True, horizontal_alignment="right", gap="small", key="sw-actions"):
@@ -183,6 +211,10 @@ def header(title: str) -> None:
         if st.button("Refresh prices", width="content"):
             live_quotes.clear()
             st.rerun()
+        on = simulated()
+        st.button("Simulation", key="sw-sim-on" if on else "sw-sim-off", width="content", on_click=toggle_simulation,
+                  help="On: a made-up portfolio, safe to show anyone. Off: your real accounts, live." if on
+                  else "Show a made-up portfolio instead of your accounts, e.g. to show someone the dashboard.")
     if res := st.session_state.pop("_last_sync", None):
         msg = " · ".join(f"{k}: {v['status']}" for k, v in res["accounts"].items()) or "no accounts synced"
         skipped = [f"{k} skipped ({v['reason']})" for k, v in res["sources"].items() if v["status"] == "skipped"]

@@ -5,6 +5,8 @@ and every table that records history (snapshots, ticks, transactions, changes, s
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import date, datetime
 
 from sqlalchemy import (
@@ -196,11 +198,25 @@ class SyncRun(Base):
 
 # ---------------------------------------------------------------- engine
 
-_engine = None
-_engine_url = None
+_engines: dict[str, object] = {}   # one engine per database URL
+_base_url: str | None = None
+_override: ContextVar[str | None] = ContextVar("db_url_override", default=None)
+
+
+@contextmanager
+def using(url: str | None):
+    """Point this thread's reads at another database (the Simulation switch's made-up one) for a block.
+    Each Streamlit session runs in its own thread, so one visitor's switch never touches another's."""
+    token = _override.set(url)
+    try:
+        yield
+    finally:
+        _override.reset(token)
 
 
 def db_url() -> str:
+    if (o := _override.get()):
+        return o
     if env("DEMO"):  # `python -m jobs.demo` fills this with made-up accounts for UI work
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         return f"sqlite:///{(DATA_DIR / 'demo.db').as_posix()}"
@@ -215,23 +231,25 @@ def db_url() -> str:
 
 
 def engine():
-    """Rebuilt whenever the URL changes, e.g. when Streamlit secrets are edited while the app is running."""
-    global _engine, _engine_url
+    """One engine per URL. The main one is rebuilt whenever its URL changes, e.g. when Streamlit secrets
+    are edited while the app is running."""
+    global _base_url
     url = db_url()
-    if _engine is not None and url != _engine_url:
-        _engine.dispose()
-        _engine = None
-    if _engine is None:
-        _engine_url = url
+    if _override.get() is None:
+        if _base_url is not None and url != _base_url and (old := _engines.pop(_base_url, None)) is not None:
+            old.dispose()
+        _base_url = url
+    if url not in _engines:
         kwargs = {"pool_pre_ping": True}
         if url.startswith("sqlite"):
             kwargs["connect_args"] = {"check_same_thread": False, "timeout": 30}
-        _engine = create_engine(url, **kwargs)
+        e = create_engine(url, **kwargs)
         try:
-            Base.metadata.create_all(_engine)
+            Base.metadata.create_all(e)
         except ProgrammingError:
             pass  # read-only login (the dashboard): the sync job, which can write, creates tables
-    return _engine
+        _engines[url] = e
+    return _engines[url]
 
 
 def is_postgres() -> bool:
@@ -239,11 +257,12 @@ def is_postgres() -> bool:
 
 
 def reset_engine() -> None:
-    """Drop the cached engine so the next call re-reads DATABASE_URL (tests)."""
-    global _engine, _engine_url
-    if _engine is not None:
-        _engine.dispose()
-    _engine, _engine_url = None, None
+    """Drop the cached engines so the next call re-reads DATABASE_URL (tests)."""
+    global _base_url
+    for e in _engines.values():
+        e.dispose()
+    _engines.clear()
+    _base_url = None
 
 
 def session() -> Session:

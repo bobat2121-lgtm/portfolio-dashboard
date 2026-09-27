@@ -63,6 +63,11 @@ h3::after { content: ""; display: block; width: 46px; height: 2px; margin-top: .
   min-height: 2.1rem !important; padding: calc(.3rem + .25px) .95rem calc(.3rem - .25px) !important; }   /* snug; Orbitron caps ride a touch high */
 /* the small label gets its own line box, so it centres in the button instead of sitting on a 16px baseline */
 .st-key-sw-header [data-testid^="stBaseButton"] p, .st-key-sw-header [data-testid="stLinkButton"] a p { display: block; line-height: 1 !important; }
+/* the Simulation switch: lit while on, a plain outline while off */
+.st-key-sw-sim-on button { background: var(--sw-yellow-faint) !important; border-color: var(--sw-yellow) !important;
+  box-shadow: 0 0 12px var(--sw-yellow-faint), inset 0 0 8px var(--sw-yellow-faint); }
+.st-key-sw-sim-on button p::before { content: "● "; color: var(--saber-green); text-shadow: 0 0 6px var(--saber-green); }
+.st-key-sw-sim-off button p::before { content: "○ "; color: var(--ink-dim); }
 /* beside the title, the buttons sit on the middle of its letters (Star Jedi's ink sits ~14px below the
    middle of the header row); a transform, so nothing else moves. Stacked on phones, they stay put. */
 @media (min-width: 640px) { .st-key-sw-actions { transform: translateY(14.5px); } }

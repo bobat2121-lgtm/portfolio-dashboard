@@ -23,7 +23,9 @@ def fresh_cache():
 
 def test_empty_database_shows_setup_hint(tmp_db, monkeypatch):
     monkeypatch.delenv("APP_PASSWORD", raising=False)
-    at = AppTest.from_file(APP, default_timeout=30).run()
+    at = AppTest.from_file(APP, default_timeout=30)
+    at.session_state["sim"] = False                                 # the real (empty) database
+    at.run()
     assert not at.exception
     assert any("No data yet" in i.value for i in at.info)
 
@@ -33,7 +35,9 @@ def test_dashboard_renders_with_data(tmp_db, monkeypatch):
     monkeypatch.setattr(prices, "get_quotes", lambda wanted: ({}, []))
     run(FakeSource("snaptrade", lambda: fidelity([mstr(), spaxx()])), FakeSource("kraken", kraken, derive=True))
     run(FakeSource("snaptrade", lambda: fidelity([mstr(12), spaxx()], cash=0)), FakeSource("kraken", kraken, derive=True))
-    at = AppTest.from_file(APP, default_timeout=30).run()
+    at = AppTest.from_file(APP, default_timeout=30)
+    at.session_state["sim"] = False                                 # the real (test) accounts, not the simulation
+    at.run()
     assert not at.exception, at.exception
     html = deck(at)
     for label in ("Total value", "YTD return", "Bitcoin", "Today", "Unrealized", "Invested", "Cash", "Cost basis"):
@@ -91,3 +95,21 @@ def test_cloud_app_without_broker_keys_has_no_in_app_sync(tmp_db, monkeypatch):
     run(FakeSource("kraken", kraken, derive=True))
     at = AppTest.from_file(APP, default_timeout=30).run()
     assert "Sync now" not in [b.label for b in at.button]
+
+
+def test_simulation_is_on_by_default_and_switches_to_the_real_accounts(tmp_db, monkeypatch):
+    monkeypatch.delenv("APP_PASSWORD", raising=False)
+    monkeypatch.setattr(prices, "get_quotes", lambda wanted: ({}, []))
+    run(FakeSource("snaptrade", lambda: fidelity([mstr(), spaxx()])), FakeSource("kraken", kraken, derive=True))
+    at = AppTest.from_file(APP, default_timeout=60).run()
+    assert not at.exception, at.exception
+    assert "$32,571" in deck(at)                                    # the made-up portfolio
+    cards = " ".join(str(e.proto) for e in at.get("html") if "sw-hold" in str(e.proto))
+    for sym in ("SPCX", "MSTR", "BTC", "QQQ", "Cash", "AAPL"):
+        assert f">{sym}<" in cards, sym
+    at.button(key="sw-sim-on").click().run()                       # off: the real (test) accounts
+    assert not at.exception, at.exception
+    assert "$32,571" not in deck(at) and deck(at)
+    assert at.button(key="sw-sim-off")
+    at.button(key="sw-sim-off").click().run()                      # and back on
+    assert "$32,571" in deck(at)
