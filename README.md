@@ -103,14 +103,10 @@ Two pages (top left): **Dashboard** and **Taxes**. A ticker of your holdings scr
 
 | Dashboard tab | What it shows |
 |---|---|
-| **Assets** (opens first) | every holding with all accounts combined (BTC on Kraken + Robinhood = one BTC, MSTR in taxable + IRA = one MSTR, all cash = one Cash) as cards, then **Performance**: you vs the same deposits in BTC and in the S&P 500 (SPY, dividends reinvested), and value vs money in |
-| **Accounts** | value by account, allocation by asset class and by taxable/IRA |
-| **Themes** | holdings by theme (edit in `config/portfolio.yaml`), Bitcoin-linked share, optional pricing in BTC |
-| **Star map** | each theme an orbit, each holding a planet sized by value, gain/loss halo, a moon per extra account |
+| **Assets** (opens first) | every holding worth over $100, all accounts combined (BTC on Kraken + Robinhood = one BTC, MSTR in taxable + IRA = one MSTR, all cash = one Cash), as cards. Below, two panels that open on demand: **Performance** (you vs the same deposits in BTC and in the S&P 500, and value vs money in; its title carries the headline) and **What if bitcoin hits…** (slide BTC's price; each holding moves by its measured beta) |
+| **Explore** | sub-tabs: **Accounts** (by account, asset class, taxable/IRA), **Themes** (Bitcoin-linked share, price in BTC), **Star map**, **Achievements** (16 badges from your history), **Positions**, **Activity** |
 | **Briefing** | a Star Wars opening crawl written from today's numbers |
-| **What if** | slide bitcoin's price; each holding moves by its measured beta to BTC (options re-priced from their stock) |
-| **Achievements** | 16 badges earned from your real history, with progress on the locked ones |
-| **Positions / Activity / Sync** | raw positions, detected changes + transactions + contributions, sync health |
+| **Sync** | sync health and recent runs |
 
 **Taxes page:** realized short- and long-term gains by year (taxable accounts), dividends and interest, a rough tax
 estimate at your rates, lots turning long-term soon, loss-harvest candidates with wash-sale windows, every sale with a

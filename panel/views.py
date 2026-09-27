@@ -207,6 +207,19 @@ def briefing(story: dict) -> None:
 
 # ---------------------------------------------------------------- performance: you vs BTC vs S&P, value vs money in
 
+def performance_label(hist) -> str:
+    """The Performance panel's title, with the headline so it says something while collapsed."""
+    from portfolio.history import summary
+
+    if hist is None or hist.empty:
+        return "Performance"
+    s = summary(hist)
+    beats = [n for k, n in (("btc", "bitcoin"), ("spy", "the S&P 500")) if s.get(k) is not None and s["value"] >= s[k]]
+    lead = f"ahead of {' and '.join(beats)}" if beats else "behind bitcoin and the S&P 500"
+    label = f"Performance · {usd(s['gain'], signed=True)} on {usd(s['net_in'])} put in · {lead}"
+    return label.replace("$", r"\$")  # labels are Markdown: a pair of $ would render as math
+
+
 def performance(hist) -> None:
     from portfolio.history import summary
 

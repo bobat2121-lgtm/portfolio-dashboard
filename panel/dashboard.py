@@ -15,7 +15,8 @@ from portfolio.timeutil import today_ny, utcnow
 USD = st.column_config.NumberColumn(format="dollar")
 PCT = st.column_config.NumberColumn(format="percent")
 QTY = st.column_config.NumberColumn(format="%.6g")
-TABS = ["Assets", "Accounts", "Themes", "Star map", "Briefing", "What if", "Achievements", "Positions", "Activity", "Sync"]
+TABS = ["Assets", "Explore", "Briefing", "Sync"]
+EXPLORE = ["Accounts", "Themes", "Star map", "Achievements", "Positions", "Activity"]  # sub-tabs of Explore
 
 
 def render() -> None:
@@ -52,16 +53,22 @@ def render() -> None:
     c6.metric("Unrealized", f"${totals['unrealized']:,.2f}",
               help=f"Invested minus cost basis. Cost basis known for {totals['basis_coverage']:.0%} of invested value.")
 
-    (assets_tab, overview, themes_tab, map_tab, brief_tab, whatif_tab, badges_tab, holdings_tab, activity_tab,
-     sync_tab) = st.container(key="sw-body").tabs(TABS)
+    assets_tab, explore_tab, brief_tab, sync_tab = st.container(key="sw-body").tabs(TABS)
+    with explore_tab:
+        overview, themes_tab, map_tab, badges_tab, holdings_tab, activity_tab = st.container(key="sw-explore").tabs(EXPLORE)
     hist = history(holdings, cash)
 
+    # the front page: the holdings, then panels that open on demand
     with assets_tab, panel("assets"):
         st.subheader("Every holding, all accounts combined")
         views.assets_view(assets)
     with assets_tab, panel("performance"):
-        st.subheader("Performance")
-        views.performance(hist)
+        with st.expander(views.performance_label(hist), expanded=False):
+            views.performance(hist)
+    with assets_tab, panel("whatif"):
+        with st.expander("What if bitcoin hits…", expanded=False):
+            slim = assets[["asset", "symbol", "underlying", "asset_class", "theme"]]
+            views.whatif_view(assets, betas(slim), btc_price)
 
     with overview, panel("accounts"):
         by_acct = queries.allocation(holdings, cash, by="account")
@@ -102,11 +109,6 @@ def render() -> None:
         first_day = lenses.as_date(tracked["as_of"].min()) if not tracked.empty else None
         live_accounts = [a.label for a in accounts.itertuples() if (a.total or 0) >= 1]
         views.briefing(lenses.crawl(totals, assets, live_accounts, first_day, today_ny()))
-
-    with whatif_tab, panel("whatif"):
-        st.subheader("What if bitcoin hits…")
-        slim = assets[["asset", "symbol", "underlying", "asset_class", "theme"]]
-        views.whatif_view(assets, betas(slim), btc_price)
 
     with badges_tab, panel("achievements"):
         st.subheader("Achievements")

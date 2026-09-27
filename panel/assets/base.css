@@ -192,3 +192,14 @@ h3::after { content: ""; display: block; width: 46px; height: 2px; margin-top: .
 /* top navigation (Dashboard / Taxes) */
 [data-testid="stTopNavLink"], [data-testid="stNavLink"] { border-radius: 0 !important; }
 [data-testid="stTopNavLink"] span, [data-testid="stNavLink"] span { font-family: var(--label) !important; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; font-size: .7rem !important; }
+
+/* front-page panels that open on demand: the expander label reads as the panel's heading */
+[class*="st-key-sw-panel"] > div > [data-testid="stExpander"] details,
+[class*="st-key-sw-panel"] [data-testid="stExpander"] details { border: none !important; background: transparent !important; }
+.st-key-sw-panel-performance [data-testid="stExpander"] summary p, .st-key-sw-panel-whatif [data-testid="stExpander"] summary p {
+  font-family: var(--label) !important; text-transform: uppercase !important; letter-spacing: .1em !important;
+  font-weight: 700 !important; font-size: .8rem !important; color: var(--ink) !important; }  /* Star Jedi lacks $ + */
+.st-key-sw-panel-performance summary:hover p, .st-key-sw-panel-whatif summary:hover p { color: var(--sw-yellow) !important; }
+/* Explore's sub-tabs: a notch smaller than the main tabs */
+.st-key-sw-explore [data-testid="stTab"] { font-size: .62rem !important; letter-spacing: .08em; }
+.st-key-sw-explore [role="tablist"] { gap: .9rem; border-bottom-color: var(--sw-yellow-faint); }
