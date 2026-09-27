@@ -1,0 +1,56 @@
+# Your accounts, and which linked account each one is.
+#
+# `match` picks the account out of what the source returns. Keys (all optional):
+#   institution: text in the broker name          retirement: true/false (IRA, Roth, 401k...)
+#   number_last4: last 4 of the account number     name_contains: text in the account name/type
+#   id: the provider's account id (strongest pin; `python -m jobs.link` prints it)
+# If a rule matches more than one account, the sync warns and asks you to pin it (number_last4 is easiest).
+# Accounts a source finds that aren't listed here are still tracked, under a key like fidelity_1234.
+accounts:
+  fidelity_taxable:
+    label: Fidelity Taxable
+    institution: Fidelity
+    tax: taxable
+    source: snaptrade
+    match: {institution: fidelity, retirement: false}
+
+  robinhood_taxable:
+    label: Robinhood Taxable
+    institution: Robinhood
+    tax: taxable
+    source: snaptrade
+    match: {institution: robinhood, retirement: false}
+
+  robinhood_ira:
+    label: Robinhood IRA
+    institution: Robinhood
+    tax: ira
+    source: snaptrade
+    match: {institution: robinhood, retirement: true}
+
+  kraken:
+    label: Kraken
+    institution: Kraken
+    tax: taxable
+    source: kraken
+    match: {}
+    # Kraken doesn't report cost basis, so it's worked out from your ledger (average cost). Coins you
+    # deposited from another wallet have no known cost; put their total $ basis here, e.g. {BTC: 25000}.
+    cost_basis_overrides: {}
+
+sources:
+  snaptrade:
+    enabled: true
+    min_minutes_between_syncs: 10  # SnapTrade asks for no more than one pull per account per 10 min
+    refresh: manual   # never | manual | always: ask SnapTrade to re-pull brokers (manual = Sync button / --refresh)
+    overlap_days: 10  # re-read this many days of activity every sync to catch late-posting transactions
+  kraken:
+    enabled: true
+    min_minutes_between_syncs: 1
+    overlap_days: 3
+
+pricing:
+  # Held at $1 and grouped as cash (Fidelity core / money-market sweep funds).
+  cash_symbols: [SPAXX, FDRXX, FZFXX, SPRXX, FZDXX, SPSXX, CORE, FCASH]
+  # Grouped separately from other crypto; priced from Kraken, $1 if Kraken has no USD pair.
+  stablecoins: [USDC, USDT, DAI, PYUSD, USDG, USD1, RLUSD, FDUSD, TUSD, USDS, USDE]
