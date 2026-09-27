@@ -7,7 +7,8 @@
  * the event is a black hole that swallows everything, dashboard included, until the page is reloaded.
  *
  * Test hooks: window.__space.trigger("supernova" | "blackhole" | ...), or ?space=EVENT_NAME in the URL;
- * window.__space.active() lists the events running now.
+ * window.__space.active() lists the events running now; window.__space.deathStar() gives the superlaser's
+ * dish, focus and emitter points in canvas pixels.
  * Keep "less-than followed by a letter or slash" out of this file: Streamlit's sanitizer drops any script
  * that looks like it hides a tag (panel/theme.py checks for it).
  */
@@ -402,7 +403,17 @@
       if (lum < 0.1 && hash2(x * 3 + 1, y * 7 + 2) > 0.975) { lights.push([x, y]); return mix(col, WARM, 0.55); }
       return col;
     });
-    ds = { ...lay.ds, sprite, size, lights, dish: [lay.ds.x + dishV[0] * R, lay.ds.y + dishV[1] * R], dishDir: norm([dishV[0], dishV[1], 0]) };
+    // Superlaser points, with the same projection the sprite is painted with (a point n on the sphere
+    // lands at the center + n.xy * R): emitters around the tilted dish, the focus just in front of it.
+    const proj = (n, k = 1) => [lay.ds.x + n[0] * R * k, lay.ds.y + n[1] * R * k];
+    const u = norm([-dishV[1], dishV[0], 0]);
+    const v = [dishV[1] * u[2] - dishV[2] * u[1], dishV[2] * u[0] - dishV[0] * u[2], dishV[0] * u[1] - dishV[1] * u[0]];
+    const onDish = (q, phi) => {                               // q: 0 at the lens, 1 at the rim
+      const s = Math.sin(q * dishA), c = Math.cos(q * dishA), cp = Math.cos(phi), sp = Math.sin(phi);
+      return proj([c * dishV[0] + s * (cp * u[0] + sp * v[0]), c * dishV[1] + s * (cp * u[1] + sp * v[1])]);
+    };
+    ds = { ...lay.ds, sprite, size, lights, onDish, dish: proj(dishV), focus: proj(dishV, 1.1),
+      emitters: Array.from({ length: 8 }, (_, i) => onDish(0.8, (i / 8) * TAU)) };
   }
   const TIE = ["D...D", "D.G.D", "DGKGD", "D.G.D", "D...D"];
   function drawDeathStar(ctx, now, bh) {
@@ -524,7 +535,7 @@
       if (first >= 0 && (!nose || first < nose[0])) nose = [first, y];
     });
     if (!guns.length && nose) guns.push(nose);
-    return { c, w, h, glow, exhaust, guns };
+    return { c, w, h, glow, exhaust, guns, nose };
   }
   function monCal(Lc) {
     const Hc = Math.round(Lc * 0.26), h = Hc + 4, cy = h / 2, glow = [];
@@ -666,8 +677,9 @@
           if (a > bayer(px, py) * 0.5) { ctx.fillStyle = rgba(col, a); ctx.fillRect(px, py, 1, 1); }
         }
       }
-      ctx.fillStyle = "#ffffff"; ctx.fillRect(Math.round(x), Math.round(y), 2, 2);
-      ctx.fillStyle = rgba(col, 0.4); ctx.fillRect(Math.round(x) - 1, Math.round(y), 1, 2); ctx.fillRect(Math.round(x) + 2, Math.round(y), 1, 2);
+      const hx = Math.round(x), hy = Math.round(y);                        // the head, centred on the tail's start
+      ctx.fillStyle = "#ffffff"; ctx.fillRect(hx - 1, hy - 1, 2, 2);
+      ctx.fillStyle = rgba(col, 0.4); ctx.fillRect(hx - 2, hy - 1, 1, 2); ctx.fillRect(hx + 1, hy - 1, 1, 2);
       return tt < dur;
     } };
   }
@@ -713,30 +725,33 @@
     let tt = 0, from;
     return { layer: "near", draw(ctx, dt, now) {
       tt += dt;
-      const [x, y] = shipPos(sh, now), rear = x + sh.sp.w / 2;
-      if (tt < 1.2) {                                                   // engines spool up
+      const [x, y] = shipPos(sh, now), ox = Math.round(x - sh.sp.w / 2), oy = Math.round(y - sh.sp.h / 2);
+      const nose = sh.sp.nose || [0, sh.sp.h / 2], nx = ox + nose[0], ny = oy + nose[1];
+      if (tt < 1.2) {                                                   // its own engines spool up
         const k = tt / 1.2;
-        for (let i = 0; i < 4; i++) { ctx.fillStyle = rgba(col, k * (1 - i / 4) * (0.7 + Math.random() * 0.3)); ctx.fillRect(Math.round(rear + i), Math.round(y - 1), 1, 3); }
+        for (const [ex, ey] of sh.sp.exhaust || []) for (let i = 0; i < 5; i++) {
+          ctx.fillStyle = rgba(col, k * (1 - i / 5) * (0.7 + Math.random() * 0.3)); ctx.fillRect(ox + ex + i, oy + ey, 1, 1);
+        }
       } else if (tt < 2.4) {                                            // the jump: a streak that lingers
-        if (!from) from = [x, y];
+        if (!from) from = [x, y, nx, ny];
         sh.hidden = true;
         const k = smooth(Math.min(1, (tt - 1.2) / 0.35)), fade = 1 - smooth((tt - 1.5) / 0.9), x0 = from[0] - k * W * 0.8;
         line(ctx, from[0] + sh.sp.w / 2, from[1], x0, from[1], col, 0.1 * fade, fade);
         line(ctx, from[0] + sh.sp.w / 2, from[1] - 1, x0 + 10, from[1] - 1, col, 0.05 * fade, 0.45 * fade);
         line(ctx, from[0] + sh.sp.w / 2, from[1] + 1, x0 + 10, from[1] + 1, col, 0.05 * fade, 0.45 * fade);
-        if (tt < 1.45) { ctx.fillStyle = rgba(WHITE, 1 - (tt - 1.2) / 0.25); ctx.fillRect(Math.round(from[0] - 2), Math.round(from[1] - 2), 5, 5); }
+        if (tt < 1.45) { ctx.fillStyle = rgba(WHITE, 1 - (tt - 1.2) / 0.25); ctx.fillRect(from[2] - 2, from[3] - 2, 5, 5); }   // at the nose
       } else if (tt < back) {
         sh.hidden = true;
       } else if (tt < back + 1.2) {                                     // drop back in from behind
-        const k = smooth((tt - back) / 1.2), xs = lerp(W + 20, x, k);
-        line(ctx, W + 20, y, xs, y, col, 0, 1);
-        line(ctx, W + 20, y - 1, xs + 8, y - 1, col, 0, 0.35);
-        line(ctx, W + 20, y + 1, xs + 8, y + 1, col, 0, 0.35);
+        const k = smooth((tt - back) / 1.2), xs = lerp(W + 20, nx, k);   // streaks in from behind, up to the nose
+        line(ctx, W + 20, ny, xs, ny, col, 0, 1);
+        line(ctx, W + 20, ny - 1, xs + 8, ny - 1, col, 0, 0.35);
+        line(ctx, W + 20, ny + 1, xs + 8, ny + 1, col, 0, 0.35);
       } else {
         sh.hidden = false;
         const k = (tt - back - 1.2) / 0.8;
         if (k >= 1) return false;
-        ctx.fillStyle = rgba(WHITE, 1 - k); ctx.fillRect(Math.round(x - sh.sp.w / 2 - 1), Math.round(y - 1), 3, 3);
+        ctx.fillStyle = rgba(WHITE, 1 - k); ctx.fillRect(nx - 1, ny - 1, 3, 3);
       }
       return true;
     } };
@@ -744,10 +759,8 @@
   function superlaser() {
     // ~19 s: the dish charges (4 s), the eight tributary beams light one by one (1.6 s), the main beam
     // fires for 10 s with the target burning, then the target blows (3.5 s)
-    const [dx, dy] = ds.dish, dir = ds.dishDir, R = ds.r;
-    const focus = [dx + dir[0] * R * 0.55, dy + dir[1] * R * 0.55];
+    const [dx, dy] = ds.dish, focus = ds.focus, tribs = ds.emitters;
     const target = [rnd(W * 0.38, W * 0.62), rnd(H * 0.04, H * 0.2)];
-    const tribs = Array.from({ length: 8 }, (_, i) => { const a = (i / 8) * TAU; return [dx + Math.cos(a) * R * 0.23, dy + Math.sin(a) * R * 0.2]; });
     const CHARGE = 4, TRIB = 1.6, FIRE = 10, AFTER = 3.5;
     const t1 = CHARGE, t2 = t1 + TRIB, t3 = t2 + FIRE, end = t3 + AFTER;
     const HOT = ramp("#0f3d17", "#1f8f2e", "#39ff14", "#b9ff9e", "#ffffff");
@@ -757,9 +770,11 @@
       if (tt < t3) {                                               // the dish fills with green light
         const k = Math.min(1, tt / CHARGE), n = 10 + 22 * k;
         for (let i = 0; i < n; i++) {
-          const a = Math.random() * TAU, r = Math.random() * R * 0.22 * (tt < t2 ? 1 - 0.5 * k * Math.random() : 1);
-          ctx.fillStyle = rgba(SABER, 0.25 + 0.6 * k); ctx.fillRect(Math.round(dx + Math.cos(a) * r), Math.round(dy + Math.sin(a) * r * 0.9), 1, 1);
+          const q = Math.sqrt(Math.random()) * 0.95 * (tt < t2 ? 1 - 0.5 * k * Math.random() : 1);
+          const [sx, sy] = ds.onDish(q, Math.random() * TAU);
+          ctx.fillStyle = rgba(SABER, 0.25 + 0.6 * k); ctx.fillRect(Math.round(sx), Math.round(sy), 1, 1);
         }
+        ctx.fillStyle = rgba(WHITE, 0.4 + 0.5 * k * (0.6 + 0.4 * Math.sin(tt * 9))); ctx.fillRect(Math.round(dx), Math.round(dy), 1, 1);   // the lens
       }
       if (tt >= t1 && tt < t3 + 0.5) {                             // tributary beams, lit in turn
         const lit = Math.min(8, 1 + (((tt - t1) / TRIB) * 8) | 0), f = tt < t3 ? 1 : 1 - (tt - t3) / 0.5;
@@ -799,7 +814,7 @@
   function rebelAttack() {
     const shooters = fleet.filter((sh) => !sh.hidden && sh.fighter);
     if (!shooters.length) return null;
-    const bolts = [], booms = [], RED = hex("#ff3b30"), HOT = hex("#ffb199"), FIRE = ramp("#7a1c05", "#e8560f", "#ffb347", "#fff1c9");
+    const bolts = [], booms = [], flashes = [], RED = hex("#ff3b30"), HOT = hex("#ffb199"), FIRE = ramp("#7a1c05", "#e8560f", "#ffb347", "#fff1c9");
     const dur = rnd(10, 14);
     let tt = 0, next = 1.2, shot = 0;
     return { layer: "near", draw(ctx, dt, now) {
@@ -809,10 +824,11 @@
         const sh = shooters[(Math.random() * shooters.length) | 0];
         if (!sh.hidden) {
           const [x, y] = shipPos(sh, now), gun = sh.sp.guns[shot++ % sh.sp.guns.length];
-          const sx = x - sh.sp.w / 2 + gun[0], sy = y - sh.sp.h / 2 + gun[1];
+          const sx = Math.round(x - sh.sp.w / 2) + gun[0], sy = Math.round(y - sh.sp.h / 2) + gun[1];   // the drawn cannon tip
           const tx = ds.x + rnd(-0.55, 0.55) * ds.r, ty = ds.y + rnd(-0.55, 0.55) * ds.r;
           const d = Math.hypot(tx - sx, ty - sy) || 1;
           bolts.push({ x: sx, y: sy, ux: (tx - sx) / d, uy: (ty - sy) / d, tx, ty, left: d });
+          flashes.push({ x: sx, y: sy, t: 0 });
         }
         next += rnd(0.12, 0.45);
       }
@@ -821,6 +837,12 @@
         b.x += b.ux * step; b.y += b.uy * step; b.left -= step;
         if (b.left <= 0) { booms.push({ x: b.tx, y: b.ty, t: 0 }); bolts.splice(i, 1); continue; }
         for (let k = 0; k < 6; k++) { ctx.fillStyle = rgba(k ? RED : HOT, 1 - k * 0.15); ctx.fillRect(Math.round(b.x - b.ux * k), Math.round(b.y - b.uy * k), 1, 1); }
+      }
+      for (let i = flashes.length - 1; i >= 0; i--) {                      // muzzle flashes
+        const f = flashes[i]; f.t += dt;
+        if (f.t > 0.12) { flashes.splice(i, 1); continue; }
+        ctx.fillStyle = rgba(HOT, 1 - f.t / 0.12); ctx.fillRect(f.x - 1, f.y, 1, 1);
+        ctx.fillStyle = rgba(WHITE, 1 - f.t / 0.12); ctx.fillRect(f.x, f.y, 1, 1);
       }
       for (let i = booms.length - 1; i >= 0; i--) {
         const bm = booms[i]; bm.t += dt;
@@ -833,7 +855,7 @@
         if (k < 0.4) { ctx.fillStyle = rgba(WHITE, 1 - k * 2); ctx.fillRect(Math.round(bm.x), Math.round(bm.y), 1, 1); }
         if (bm.t > 0.9) booms.splice(i, 1);
       }
-      const more = tt < dur + 1.5 || bolts.length > 0 || booms.length > 0;   // +1.5 s: time to pull back
+      const more = tt < dur + 1.5 || bolts.length > 0 || booms.length > 0 || flashes.length > 0;   // +1.5 s: time to pull back
       if (!more) attack = null;
       return more;
     } };
@@ -1038,7 +1060,8 @@
   }
   const setMood = (m) => { mood = clamp(Number(m) || 0, -1, 1); };
   const api = { alive: true, consumed: false, configure, setMood, trigger: start, events: Object.keys(EVENTS).concat("blackhole"),
-    active: () => events.map((e) => e.name) };
+    active: () => events.map((e) => e.name),
+    deathStar: () => ({ x: ds.x, y: ds.y, r: ds.r, dish: ds.dish, focus: ds.focus, emitters: ds.emitters }) };
   window.__space = api;
 
   layout();
