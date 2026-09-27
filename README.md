@@ -146,8 +146,11 @@ jumping to hyperspace and back, a rebel attack run (~12 s), or the Death Star ch
 events (roughly every 3.5 hours of viewing) a black hole opens, pulls everything in, swallows the dashboard and leaves
 the tab black until you reload.
 
-- **Panel style:** `mix` (floating header and numbers, solid data panels). The other two are still in the
+- **Panel style:** `mix` (floating header and numbers, see-through data panels). The other two are still in the
   code: add `?style=distinct` (solid panels) or `?style=melded` (no panels) to the URL to see them.
+- **Trial: floating islands.** Add `?style=islands`: no holdings panel, every info box (holding cards, the
+  headline tags and readouts) floats on its own and bobs gently; bigger panels become still, rounded islands.
+  The choice sticks while you move between pages; open the plain URL again for mix.
 - **Try an event now:** add `?space=supernova` to the URL (or `meteor_shower`, `comet`, `asteroid`, `pulsar`,
   `hyperspace`, `superlaser`, `rebel_attack`, `shooting_star`, `blackhole`). From the browser console:
   `__space.trigger("comet")`.

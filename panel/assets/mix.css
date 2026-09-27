@@ -6,7 +6,7 @@
 .st-key-sw-body [role="tablist"] { border-bottom-color: var(--sw-yellow-faint); }
 [class*="st-key-sw-panel"], [data-testid="stForm"] {
   position: relative;
-  background: rgba(7, 10, 17, .86) !important;
+  background: rgba(7, 10, 17, .7) !important;
   backdrop-filter: blur(2px);
   clip-path: var(--chamfer);
   box-shadow: inset 0 0 0 1px var(--panel-line), inset 0 2px 0 0 var(--sw-yellow-soft);

@@ -68,7 +68,7 @@ h3::after { content: ""; display: block; width: 46px; height: 2px; margin-top: .
   --c: var(--sw-yellow);
   position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: .4rem;
   min-width: 0; padding: .95rem 1.15rem .9rem; line-height: 1.1; container-type: inline-size;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--c) 9%, transparent), rgba(6, 9, 15, .9) 48%);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--c) 9%, transparent), rgba(6, 9, 15, .78) 48%);
   clip-path: var(--chamfer);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 40%, transparent), inset 0 3px 0 0 var(--c);
 }
@@ -94,7 +94,7 @@ h3::after { content: ""; display: block; width: 46px; height: 2px; margin-top: .
 .sw-stats6 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--panel-line);
   border: 1px solid var(--panel-line); clip-path: var(--chamfer); }
 .sw-st { display: flex; flex-direction: column; justify-content: center; gap: .2rem; min-width: 0; padding: .55rem .9rem; line-height: 1.15;
-  background: rgba(6, 9, 15, .9); }
+  background: rgba(6, 9, 15, .78); }
 .sw-st .k { font-family: var(--label); font-weight: 700; font-size: .54rem; letter-spacing: .13em; text-transform: uppercase; color: var(--ink-dim); white-space: nowrap; }
 .sw-st .k.tip { text-decoration: underline dotted rgba(157, 163, 174, .55); text-underline-offset: 3px; cursor: help; }
 .sw-st .v { font-family: var(--mono); font-weight: 700; font-size: 1.15rem; color: var(--ink); white-space: nowrap; overflow: hidden;
@@ -108,6 +108,12 @@ h3::after { content: ""; display: block; width: 46px; height: 2px; margin-top: .
   .sw-stats6 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (prefers-reduced-motion: reduce) { .sw-herotag::after { display: none; } }
+/* islands style (panel/assets/islands.css): the info boxes bob gently */
+@keyframes sw-bob { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-5px) } }
+@media (prefers-reduced-motion: reduce) {
+  html[data-space-style="islands"] .sw-card, html[data-space-style="islands"] .sw-herotag,
+  html[data-space-style="islands"] .sw-st, html[data-space-style="islands"] .sw-badge { animation: none; }
+}
 
 /* tabs (react-aria markup in Streamlit 1.64) */
 .st-key-sw-body [role="tablist"] { gap: 1.15rem; border-bottom: 1px solid var(--panel-line); flex-wrap: wrap; }
@@ -153,7 +159,7 @@ h3::after { content: ""; display: block; width: 46px; height: 2px; margin-top: .
 .sw-cards-wide { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
 .sw-card {
   --c: var(--sw-yellow);
-  position: relative; padding: .8rem .9rem .75rem; background: rgba(6, 9, 15, .82);
+  position: relative; padding: .8rem .9rem .75rem; background: rgba(6, 9, 15, .68);
   clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
   box-shadow: inset 0 0 0 1px var(--panel-line), inset 0 2px 0 0 var(--c);
   font-family: var(--mono); color: var(--ink);

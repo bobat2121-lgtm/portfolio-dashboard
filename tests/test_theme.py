@@ -22,6 +22,16 @@ def test_every_style_has_css_and_the_font_loads():
     assert theme._font_face().startswith("@font-face{font-family:'Star Jedi'")
 
 
+def test_islands_builds_on_mix_and_keeps_its_rules_scoped():
+    assert theme.STYLE_FILES["islands"] == ["mix.css", "islands.css"] and set(theme.STYLE_FILES) == set(theme.STYLES)
+    scoped = theme.scope("\n".join(theme._read(f) for f in theme.STYLE_FILES["islands"]), "islands")
+    rules = [r for r in scoped.splitlines() if r.strip()]
+    assert all(r.startswith('html[data-space-style="islands"]') for r in rules)
+    assert any(".st-key-sw-panel-assets" in r and "transparent" in r for r in rules)   # the holdings panel dissolves
+    assert any(".sw-card" in r and "sw-bob" in r for r in rules)                      # its cards float
+    assert "@keyframes sw-bob" in theme._read("base.css")
+
+
 def test_forced_event_is_whitelisted():
     assert "blackhole" in theme.EVENTS and "<script>" not in theme.EVENTS
 

@@ -1,0 +1,42 @@
+/* ISLANDS (trial, ?style=islands): mix, minus the big holdings panel. Every info box floats on its own in
+   space: rounded, lifted on a soft shadow, bobbing gently out of step with its neighbours. The bigger
+   panels (Performance, What if, Explore, Taxes) turn into rounded islands too, but hold still.
+   Loaded after mix.css (see theme.STYLE_FILES); the bob keyframes live in base.css. */
+
+/* bigger panels: rounded islands that hold still */
+[class*="st-key-sw-panel"] {
+  clip-path: none; border-radius: 18px; background: rgba(8, 11, 19, .66) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06), inset 0 2px 0 0 var(--sw-yellow-soft), 0 22px 34px -18px rgba(0, 0, 0, .95);
+}
+[class*="st-key-sw-panel"]::before, .sw-herotag::before { display: none; }
+[class*="st-key-sw-panel"] h2, [class*="st-key-sw-panel"] h3 { text-shadow: 0 0 3px #000, 0 0 14px rgba(0, 0, 0, .95); }
+
+/* the holdings panel dissolves: its cards are the islands */
+.st-key-sw-panel-assets {
+  background: transparent !important; backdrop-filter: none; box-shadow: none; padding: .2rem 0 .6rem !important;
+}
+.sw-cards { gap: 1.15rem; }
+
+/* the info boxes: holding cards, hero tags, the six readouts, achievement badges */
+.sw-card, .sw-st, .sw-badge {
+  clip-path: none; border-radius: 16px; background: rgba(8, 11, 19, .68);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07), inset 0 2px 0 0 var(--c, var(--sw-yellow-soft)),
+    0 16px 26px -12px rgba(0, 0, 0, .9), 0 0 24px -10px color-mix(in srgb, var(--c, var(--sw-yellow)) 35%, transparent);
+  animation: sw-bob 7.4s ease-in-out infinite; will-change: transform;
+}
+.sw-herotag {
+  clip-path: none; border-radius: 18px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 40%, transparent), inset 0 3px 0 0 var(--c),
+    0 18px 30px -12px rgba(0, 0, 0, .9), 0 0 32px -8px color-mix(in srgb, var(--c) 45%, transparent);
+  animation: sw-bob 9s ease-in-out infinite; will-change: transform;
+}
+.sw-stats6 { gap: .6rem; background: none; border: 0; clip-path: none; }
+.sw-st { --c: rgba(157, 163, 174, .35); border-radius: 14px; }
+
+/* out of step: each box gets its own period and phase */
+.sw-card:nth-child(4n+1), .sw-st:nth-child(3n+1) { animation-duration: 7.4s; animation-delay: -1.2s; }
+.sw-card:nth-child(4n+2), .sw-st:nth-child(3n+2) { animation-duration: 6.6s; animation-delay: -4.1s; }
+.sw-card:nth-child(4n+3), .sw-st:nth-child(3n+3) { animation-duration: 8.1s; animation-delay: -2.7s; }
+.sw-card:nth-child(4n+4) { animation-duration: 7s; animation-delay: -5.6s; }
+.sw-herotag.total { animation-delay: -2s; }
+.sw-herotag.ytd { animation-duration: 9.6s; animation-delay: -6.5s; }

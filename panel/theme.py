@@ -1,9 +1,10 @@
 """The look: a pixel-art space scene behind the dashboard, Star Wars palette and Star Jedi type.
 
-Three panel styles:
+Panel styles (mix unless the URL says ?style=...):
+    mix       header and numbers float on space, data sits in see-through panels
     distinct  solid panels sitting on top of space
     melded    no panels: space shows through everything
-    mix       header and numbers float on space, data sits in solid panels
+    islands   trial: mix without the holdings panel; every info box floats on its own and bobs gently
 
 The scene itself is panel/assets/space.js (canvas, runs in the page). The Star Jedi font (Boba Fonts,
 freeware) ships as its original, intact zip in panel/assets/fonts/, as its license asks, and is read
@@ -21,7 +22,9 @@ from pathlib import Path
 import streamlit as st
 
 ASSETS = Path(__file__).resolve().parent / "assets"
-STYLES = {"distinct": "Distinct", "melded": "Melded", "mix": "Mix"}
+STYLES = {"distinct": "Distinct", "melded": "Melded", "mix": "Mix", "islands": "Islands"}
+STYLE_FILES = {"distinct": ["distinct.css"], "melded": ["melded.css"], "mix": ["mix.css"],
+               "islands": ["mix.css", "islands.css"]}  # islands builds on mix
 DEFAULT_STYLE = "mix"
 EVENTS = {"shooting_star", "meteor_shower", "supernova", "comet", "asteroid", "pulsar", "hyperspace", "superlaser",
           "rebel_attack", "blackhole"}
@@ -58,10 +61,11 @@ TAG_LIKE = re.compile(r"<[/\w!]")
 
 
 def current_style() -> str:
-    """Mix, unless the URL asks for another (?style=distinct|melded); there's no on-page switcher."""
-    s = st.query_params.get("style") or DEFAULT_STYLE
-    s = str(s).lower()
-    return s if s in STYLES else DEFAULT_STYLE
+    """Mix, unless the URL asks for another (?style=distinct|melded|islands). The choice sticks for the
+    session, so it survives moving between pages; there's no on-page switcher."""
+    if (q := st.query_params.get("style")) is not None:
+        st.session_state["space_style"] = str(q).lower() if str(q).lower() in STYLES else DEFAULT_STYLE
+    return st.session_state.get("space_style", DEFAULT_STYLE)
 
 
 def scope(css: str, style: str) -> str:
@@ -85,7 +89,7 @@ def apply(style: str) -> None:
     """
     base = _read("base.css")
     imports, rest = base.split("/*END-IMPORTS*/", 1)  # @import has to come before @font-face
-    variants = "\n".join(scope(_read(f"{s}.css"), s) for s in STYLES)
+    variants = "\n".join(scope("\n".join(_read(f) for f in STYLE_FILES[s]), s) for s in STYLES)
     st.html(f"<style>{imports}{_font_face()}{rest}{variants}</style>")
     force = st.query_params.get("space")  # ?space=supernova etc., for trying events out
     cfg = {"style": style, "force": force if force in EVENTS else None, "odds": BLACK_HOLE_ODDS,
