@@ -45,14 +45,14 @@ def _qty(q: float) -> str:
 # ---------------------------------------------------------------- sections
 
 def _summary(r, s: dict, since: date) -> str:
-    """One line of six: shares, avg cost, value, paid, unrealized, total return."""
+    """One line of six: shares, avg cost, paid, value, unrealized, total return."""
     opt = r.asset_class == m.OPTION
     unreal = s["unrealized"]
     cells = [
         _cell("Contracts" if opt else "Shares", _qty(s["shares"]), f"{_qty(s['shares'] * 100)} shares" if opt else ""),
         _cell("Avg cost", price_fmt(s["avg_cost"]), "per share"),
-        _cell("Value", usd(s["value"]), "now"),
         _cell("Paid", usd(s["paid"]) if s["paid"] is not None else "—", "cost basis"),
+        _cell("Value", usd(s["value"]), "now"),
         _cell("Unrealized", usd(unreal, signed=True) if unreal is not None else "—",
               pct(unreal / s["paid"], True) if unreal is not None and s["paid"] else "", tone(unreal)),
         _cell("Total return", usd(s["total"], signed=True),
