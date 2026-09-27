@@ -154,6 +154,8 @@ the tab black until you reload.
 - **Try an event now:** add `?space=supernova` to the URL (or `meteor_shower`, `comet`, `asteroid`, `pulsar`,
   `hyperspace`, `superlaser`, `rebel_attack`, `shooting_star`, `blackhole`). From the browser console:
   `__space.trigger("comet")`.
+- **Star density:** 0.4 of the full starfield (`STAR_DENSITY` in [panel/theme.py](panel/theme.py)); add
+  `?stars=0.7` (0.2 to 2) to the URL to try another.
 - People who set their OS to *reduce motion* get the scene without the random events.
 - Type: **Star Jedi** by Boba Fonts (freeware) for titles, kept as its original, intact zip in
   `panel/assets/fonts/` as its license asks, plus Orbitron and Share Tech Mono from Google Fonts.

@@ -59,6 +59,8 @@ h3::after { content: ""; display: block; width: 46px; height: 2px; margin-top: .
 [data-testid="stMetricValue"] > div { overflow: visible !important; text-overflow: clip !important; }
 .st-key-sw-header [data-testid="stButtonGroup"] { justify-content: flex-end; }
 .st-key-sw-header [data-testid^="stBaseButton"] p, .st-key-sw-header [data-testid="stLinkButton"] p { font-size: .62rem !important; letter-spacing: .03em !important; white-space: nowrap; }
+.st-key-sw-header [data-testid^="stBaseButton"], .st-key-sw-header [data-testid="stLinkButton"] a {
+  min-height: 2.1rem !important; padding: .3rem .95rem !important; }   /* snug around the label */
 [data-testid="stMetricDelta"] { font-family: var(--mono) !important; }
 
 /* the headline deck: total value and YTD return as hero tags, six even readouts beside them */

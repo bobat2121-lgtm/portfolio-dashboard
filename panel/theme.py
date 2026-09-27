@@ -28,6 +28,7 @@ STYLE_FILES = {"distinct": ["distinct.css"], "melded": ["melded.css"], "mix": ["
 DEFAULT_STYLE = "mix"
 EVENTS = {"shooting_star", "meteor_shower", "supernova", "comet", "asteroid", "pulsar", "hyperspace", "superlaser",
           "rebel_attack", "blackhole"}
+STAR_DENSITY = 0.4  # share of the full starfield that's drawn; ?stars=0.7 (0.2-2) tries another
 BLACK_HOLE_ODDS = 1 / 300  # per random event; events come every 12-72 s, so roughly once in 3.5 hours
 
 
@@ -92,8 +93,12 @@ def apply(style: str) -> None:
     variants = "\n".join(scope("\n".join(_read(f) for f in STYLE_FILES[s]), s) for s in STYLES)
     st.html(f"<style>{imports}{_font_face()}{rest}{variants}</style>")
     force = st.query_params.get("space")  # ?space=supernova etc., for trying events out
+    try:
+        stars = min(2.0, max(0.2, float(st.query_params.get("stars", STAR_DENSITY))))
+    except ValueError:
+        stars = STAR_DENSITY
     cfg = {"style": style, "force": force if force in EVENTS else None, "odds": BLACK_HOLE_ODDS,
-           "minGap": 12, "maxGap": 72}
+           "minGap": 12, "maxGap": 72, "stars": stars}
     js = _read("space.js").replace("__SPACE_CFG__", json.dumps(cfg))
     st.html(f'<div id="space-boot"></div><script>{js}</script>', unsafe_allow_javascript=True)
 

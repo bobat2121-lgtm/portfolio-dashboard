@@ -238,7 +238,7 @@
 
     stars = []; twinklers = [];
     const TINTS = [hex("#ffffff"), hex("#dfe9ff"), hex("#fff1d6"), hex("#ffc9b5"), hex("#bcd4ff"), hex("#fff7a8")];
-    const count = Math.round((W * H) / 80);
+    const count = Math.round(((W * H) / 80) * (CFG.stars || 1));         // CFG.stars: density, 1 = the usual sky
     for (let i = 0; i < count; i++) {
       const x = (r() * W) | 0, y = (r() * H) | 0;
       if (band(x, y) < 0.25 && r() < 0.4) continue;

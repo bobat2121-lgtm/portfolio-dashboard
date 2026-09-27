@@ -168,23 +168,21 @@ def header(title: str) -> None:
     box = st.container(key="sw-header")
     left, right = box.columns([3, 2], vertical_alignment="center")
     left.title(title)
-    with right:
-        b1, b2 = st.columns(2)
-        with b1:
-            if can_sync_here():
-                if st.button("Sync now", width="stretch", help="Pull every account now (asks SnapTrade to refresh too)"):
-                    with st.spinner("Syncing accounts…"):
-                        res = sync.run(trigger="manual", refresh=True)
-                    st.cache_data.clear()
-                    st.session_state["_last_sync"] = res
-                    st.rerun()
-            elif url := section("app").get("sync_workflow_url"):
-                st.link_button("Sync now", url, width="stretch",
-                               help="Opens the sync workflow on GitHub: press 'Run workflow', then refresh here in a minute")
-        with b2:
-            if st.button("Refresh prices", width="stretch"):
-                live_quotes.clear()
+    # the buttons hug their labels, side by side on the right
+    with right.container(horizontal=True, horizontal_alignment="right", gap="small", key="sw-actions"):
+        if can_sync_here():
+            if st.button("Sync now", width="content", help="Pull every account now (asks SnapTrade to refresh too)"):
+                with st.spinner("Syncing accounts…"):
+                    res = sync.run(trigger="manual", refresh=True)
+                st.cache_data.clear()
+                st.session_state["_last_sync"] = res
                 st.rerun()
+        elif url := section("app").get("sync_workflow_url"):
+            st.link_button("Sync now", url, width="content",
+                           help="Opens the sync workflow on GitHub: press 'Run workflow', then refresh here in a minute")
+        if st.button("Refresh prices", width="content"):
+            live_quotes.clear()
+            st.rerun()
     if res := st.session_state.pop("_last_sync", None):
         msg = " · ".join(f"{k}: {v['status']}" for k, v in res["accounts"].items()) or "no accounts synced"
         skipped = [f"{k} skipped ({v['reason']})" for k, v in res["sources"].items() if v["status"] == "skipped"]
