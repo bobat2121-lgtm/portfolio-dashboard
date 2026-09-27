@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
 
 import streamlit as st
 
@@ -18,7 +19,9 @@ from panel.common import boot, gate
 if "--demo" in sys.argv:
     os.environ["DEMO"] = "1"
 
-st.set_page_config(page_title="BTC Supernova", layout="wide")
+# the bookmark icon: a pixel ₿ in Star Wars yellow on space black (16x16 art, saved at 64x64)
+ICON = Path(__file__).parent / "panel" / "assets" / "favicon.png"
+st.set_page_config(page_title="BTC Supernova", page_icon=str(ICON), layout="wide")
 boot()
 theme.apply(theme.current_style())  # the scene shows on the lock screen too; it carries no data
 gate()
