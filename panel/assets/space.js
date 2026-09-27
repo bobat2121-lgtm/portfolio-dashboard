@@ -572,7 +572,7 @@
   function shipPos(sh, now) {
     let push = 0;
     if (attack && sh.fighter) {
-      const t = now - attack.t0;
+      const t = attack.t;
       push = smooth(t / 2.5) * (1 - smooth((t - attack.dur + 0.5) / 2.5)) * 18 * S;
     }
     return [sh.x - push + Math.sin(now * 0.05 + sh.ph) * 3 * S * (sh.fighter ? 1 : 0.3), sh.y + Math.round(Math.sin(now * 0.45 + sh.ph) * sh.bob)];
@@ -818,8 +818,8 @@
     const dur = rnd(10, 14);
     let tt = 0, next = 1.2, shot = 0;
     return { layer: "near", draw(ctx, dt, now) {
-      if (!tt) attack = { t0: now, dur };
       tt += dt;
+      attack = { t: tt, dur };                                   // the fighters' push follows the event's own clock
       while (tt < dur - 0.8 && tt >= next) {
         const sh = shooters[(Math.random() * shooters.length) | 0];
         if (!sh.hidden) {
@@ -902,12 +902,13 @@
   // ------------------------------------------------------------------ the black hole
   function startBlackHole() {
     if (BH || consumed) return;
-    BH = { x: rnd(W * 0.3, W * 0.7), y: rnd(H * 0.3, H * 0.7), t0: performance.now() / 1000, rh50: 0 };
+    if (W < 2 || H < 2) { setTimeout(startBlackHole, 500); return; }   // no sky yet (the page is still sizing)
+    BH = { x: rnd(W * 0.3, W * 0.7), y: rnd(H * 0.3, H * 0.7), t: 0, rh50: 0 };   // t: seconds actually shown
     events.length = 0;
     clearTimeout(timer);
   }
-  function bhState(now) {
-    const tb = now - BH.t0, minD = Math.min(W, H), diag = Math.hypot(W, H), base = 0.6 + 4.4 * S;
+  function bhState(tb) {
+    const minD = Math.min(W, H), diag = Math.hypot(W, H), base = 0.6 + 4.4 * S;
     let rh, k = 0;
     if (tb < 25) rh = 0.6 + 4.4 * S * smooth(tb / 25);
     else if (tb < 50) { k = smooth((tb - 25) / 25); rh = base + 0.1 * minD * k; }
@@ -977,7 +978,8 @@
   // ------------------------------------------------------------------ frame
   function draw(now, dt) {
     const t = Date.now() / 1000;
-    const bh = BH ? bhState(now) : null;
+    // the hole's clock runs on frames drawn, so it pauses in a background tab instead of finishing unseen
+    const bh = BH ? bhState((BH.t += dt)) : null;
     if (bh && bh.done) return consume();
     const pulling = bh && bh.k > 0;
 
@@ -1066,7 +1068,8 @@
 
   layout();
   let resizeT = 0;
-  window.addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => { if (!BH && !consumed) layout(); }, 250); });
+  // (during a black hole the sky stays put, unless it never got a size)
+  window.addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => { if (!consumed && (!BH || W < 2)) layout(); }, 250); });
   raf = requestAnimationFrame(frame);
   schedule();
   configure(CFG);
