@@ -325,7 +325,8 @@ def _price(v: float) -> str:
     return price_fmt(v)
 
 
-def ticker(assets: pd.DataFrame, btc_price: float | None, btc_open: float | None) -> None:
+def ticker(assets: pd.DataFrame, btc_price: float | None, btc_open: float | None, watch=()) -> None:
+    """BTC, your holdings over $100, then the watchlist (config: ticker.watch), each shown once."""
     items = []
     if btc_price:
         items.append(("BTC", btc_price, (btc_price / btc_open - 1) if btc_open else None))
@@ -334,6 +335,9 @@ def ticker(assets: pd.DataFrame, btc_price: float | None, btc_open: float | None
             continue
         prev_value = r.market_value - r.day_change
         items.append((r.asset, float(r.price), (r.day_change / prev_value) if prev_value else None))
+    items += list(watch)
+    seen: set[str] = set()
+    items = [i for i in items if not (i[0] in seen or seen.add(i[0]))]  # first wins: live BTC over the BTC holding
     if not items:
         return
     arrows = {"up": "▲", "down": "▼", "flat": "■"}

@@ -6,7 +6,8 @@
  * and its TIE patrol, the rebel fleet, near events. Random events fire every 12-72 s. Very rarely
  * the event is a black hole that swallows everything, dashboard included, until the page is reloaded.
  *
- * Test hooks: window.__space.trigger("supernova" | "blackhole" | ...), or ?space=EVENT_NAME in the URL.
+ * Test hooks: window.__space.trigger("supernova" | "blackhole" | ...), or ?space=EVENT_NAME in the URL;
+ * window.__space.active() lists the events running now.
  * Keep "less-than followed by a letter or slash" out of this file: Streamlit's sanitizer drops any script
  * that looks like it hides a tag (panel/theme.py checks for it).
  */
@@ -429,62 +430,101 @@
     ties.filter((t) => t.front).forEach(drawTie);
   }
 
-  // ------------------------------------------------------------------ the rebel fleet (facing left, at the Death Star)
+  // ------------------------------------------------------------------ the rebel fleet
+  // Side views, noses to the left: they fly at the Death Star. Engines glow and trail at the back.
   const PAL = { w: "#d8dade", g: "#9aa0a8", d: "#5b6068", k: "#23262b", r: "#c9342c", o: "#ff8a3d", y: "#ffd98a",
-    c: "#1d2b3a", l: "#7c828b", Y: "#e3c24a", b: "#8fe3ff", B: "#3aa0e8", D: "#3a3f47", G: "#8a8f98", K: "#15171a" };
+    c: "#1d2b3a", l: "#7c828b", Y: "#e3c24a", b: "#8fe3ff", B: "#3aa0e8", D: "#3a3f47", G: "#8a8f98", K: "#15171a",
+    W: "#f4f5f7", R: "#8e1f1a", s: "#b8bdc4" };
+  // T-65 X-wing, S-foils open: long nose, canopy, R2 unit, the near wings with engines at their roots and
+  // cannons running forward from the tips.
   const XWING = [
-    ".....lllllllllllld......",
-    "..............wwrd......",
-    ".............gwwrw......",
-    "............gwwwwwddd...",
-    "...........gwwwwwwkkkoy.",
-    "...gg" + "w".repeat(16) + "d..",
-    "gwwwccwwwr" + "w".repeat(12) + "d.",
-    "...gg" + "w".repeat(16) + "d..",
-    "...........gwwwwwwkkkoy.",
-    "............gwwwwwddd...",
-    ".............gwwrw......",
-    "..............wwrd......",
-    ".....lllllllllllld......",
+    "........llllllllllllsgd.......",
+    "...................sgwd.......",
+    "..................sgwrd.......",
+    ".................sgwwd........",
+    "............cc..sDDDDDDDDDDDoy",
+    ".........gsscccwBBgwwwwwwwwDoy",
+    "...gswwwwwwwwwwwwwwwwwwwwwwwd.",
+    "wWwwwwrrrrwwwwwwwwwwwwwwwwwwd.",
+    "...ddddddddgggggggggggggggggd.",
+    ".................dDDDDDDDDDDoy",
+    ".................sgwwwDDDDDDoy",
+    "..................sgwrd.......",
+    "...................sgwd.......",
+    "........llllllllllllsgd.......",
   ];
+  // BTL Y-wing: the cockpit pod and ion turret, an open frame, then the long engine nacelle.
   const YWING = [
-    "..........ddgggggggggggkoy",
-    "..........dgwwwwwwwwwwwkoy",
-    "...............gdd........",
-    ".gggwwwcwwwwwwwwgdd.......",
-    "ggwwwwwwYYwwwwwwgdd.......",
-    ".gggwwwwwwwwwwwwgdd.......",
-    "...............gdd........",
-    "..........dgwwwwwwwwwwwkoy",
-    "..........ddgggggggggggkoy",
+    "..ll...............................",
+    ".sgws..............................",
+    "sgYYwwgd...........................",
+    "gwcckwwwwd.......Rsgggggggggggggg.",
+    "gwwwwwwwwwwdkdkdkrswwwwwwwwwwwwwwDDoy",
+    "gwwwwYYwwwwdkdkdkrswwwwwwwwwwwwwwDDoy",
+    ".ddddddddddd.....Rsdddddddddddddd.",
   ];
-  const AWING = ["......gwwk...", "....gwwrrko..", "..gwwwwwwwko.", "cwwwwrrwwwwoy", "..gwwwwwwwko.", "....gwwrrko..", "......gwwk..."];
+  // RZ-1 A-wing: a flat wedge, canopy mid-body, fins over the engines.
+  const AWING = [
+    "................sgd..",
+    "...............sgwd..",
+    "..........cc..sgwwDoy",
+    ".......gscckwwwwwwDoy",
+    "...gswwwwrrwwwwwwwwd.",
+    "wWwwwwwwwwwwwwwwwwwd.",
+    "...dddddddddddddddDoy",
+    "...............sgdDoy",
+    "................sgd..",
+  ];
+  // The Millennium Falcon from a low three-quarter angle: the disc's top as a squashed ellipse over its
+  // rim, the blue engine band across the back, forks forward, cockpit tube on the side, dish on top.
+  function falconRows() {
+    const Wd = 38, Hd = 15, cx = 23, cy = 6.5, rx = 13.5, ry = 4.3, rows = [];
+    for (let y = 0; y !== Hd; y++) {
+      let row = "";
+      for (let x = 0; x !== Wd; x++) {
+        const dx = x - cx + 0.5, dy = y - cy + 0.5, e = Math.hypot(dx / rx, dy / ry);
+        const under = Math.hypot(dx / rx, (dy - 1) / ry) <= 1 || Math.hypot(dx / rx, (dy - 2) / ry) <= 1;
+        let ch = ".";
+        if (e <= 1) {
+          const ring = Math.abs(e - 0.55) < 0.07 || Math.abs(e - 0.9) < 0.06;
+          const spoke = e > 0.2 && Math.abs(((Math.atan2(dy / ry, dx / rx) + 7) % (Math.PI / 4)) - 0.4) < 0.09;
+          const t = 0.62 - (dy / ry) * 0.22 - (dx / rx) * 0.08;
+          ch = ring || spoke ? "g" : t > 0.8 ? "W" : t > 0.52 ? "w" : "s";
+          if (e < 0.16) ch = "d";
+        } else if (under) ch = dx > rx * 0.3 ? "b" : dy > 0 ? "d" : "D";
+        if (x >= 2 && x <= 13) {                                   // the forks: far one high, near one low
+          if (y === 5) ch = "s";
+          if ((y === 8 || y === 9) && e > 1) ch = y === 8 ? "w" : "d";
+        }
+        if (x >= 13 && x <= 17 && y >= 9 && y <= 11) ch = x === 13 ? (y === 10 ? "c" : "k") : y === 9 ? "w" : y === 11 ? "d" : "s";
+        if ((x === 27 && y === 2) || (x === 28 && (y === 1 || y === 2))) ch = "W";   // radar dish
+        if ((x === 22 || x === 23) && (y === 5 || y === 6)) ch = "k";                // top turret
+        row += ch;
+      }
+      rows.push(row);
+    }
+    return rows;
+  }
+  // rows -> sprite. glow: engine pixels that flicker; exhaust: glowing pixels at the back of a row, which
+  // trail behind the ship; guns: where lasers leave (the tip of each cannon, else the nose).
   function fromMap(rows) {
-    const h = rows.length, w = Math.max(...rows.map((r) => r.length)), glow = [];
+    const h = rows.length, w = Math.max(...rows.map((r) => r.length)), glow = [], exhaust = [], guns = [];
     const c = paint([w, h], (x, y) => {
       const ch = rows[y][x];
       if (!ch || ch === ".") return null;
       if (ch === "o" || ch === "y" || ch === "b") glow.push([x, y, hex(PAL[ch])]);
       return hex(PAL[ch]);
     });
-    return { c, w, h, glow };
-  }
-  function falcon() {
-    const R = 9, cx = 19, cy = 11, glow = [];
-    const c = paint([30, 23], (x, y) => {
-      const dx = x - cx + 0.5, dy = y - cy + 0.5, d = Math.hypot(dx, dy);
-      const mandible = x >= cx - R - 8 && x <= cx - R + 3 && ((y >= cy - 5 && y <= cy - 2) || (y >= cy + 2 && y <= cy + 5));
-      const cockpit = Math.hypot(x - (cx - 8), y - (cy - 8)) <= 2 || (x >= cx - 7 && x <= cx - 3 && y >= cy - 8 && y <= cy - 6);
-      if (d > R && !mandible && !cockpit) return null;
-      if (d <= R && d > R - 1.2 && dx > R * 0.45) { glow.push([x, y, hex(PAL.b)]); return hex(PAL.b); }  // engine arc
-      if (cockpit && (x === cx - 9 && (y === cy - 8 || y === cy - 9))) return hex(PAL.c);
-      let t = 0.55 + ((-dx * 0.25 - dy * 0.35) / R) * 0.5 + (hash2(x >> 1, y >> 1) - 0.5) * 0.12;
-      if (d <= R && Math.abs(d - R * 0.55) < 0.5) t -= 0.12;
-      if (d <= R && Math.abs(Math.atan2(dy, dx) % (Math.PI / 4)) < 0.08) t -= 0.08;
-      if (Math.hypot(x - (cx + 2), y - (cy - 4)) < 1.6) t = 0.9;                                    // radar dish
-      return pick(P.grey, t * 0.9 + 0.1, x, y);
+    let nose = null;
+    rows.forEach((row, y) => {
+      const end = row.replace(/\.+$/, "").length - 1;
+      if (end >= 0 && "oyb".includes(row[end])) exhaust.push([end, y, hex(PAL[row[end]])]);
+      if (row.includes("l")) guns.push([row.indexOf("l"), y]);
+      const first = row.search(/[^.]/);
+      if (first >= 0 && (!nose || first < nose[0])) nose = [first, y];
     });
-    return { c, w: 30, h: 23, glow };
+    if (!guns.length && nose) guns.push(nose);
+    return { c, w, h, glow, exhaust, guns };
   }
   function monCal(Lc) {
     const Hc = Math.round(Lc * 0.26), h = Hc + 4, cy = h / 2, glow = [];
@@ -503,17 +543,28 @@
   }
   function buildFleet() {
     const FX = lay.fleetX, s = S;
-    const X = fromMap(XWING), Y = fromMap(YWING), A = fromMap(AWING), F = falcon(), M = monCal(Math.round(clamp(W * 0.1, 36, 84)));
-    const ship = (sp, x, y, bob) => ({ sp, x, y, ph: Math.random() * TAU, bob: bob ?? 1, hidden: false, fighter: sp.w < 28 });
+    const X = fromMap(XWING), Y = fromMap(YWING), A = fromMap(AWING), F = fromMap(falconRows());
+    const M = monCal(Math.round(clamp(W * 0.1, 36, 84)));
+    // fighters strafe the Death Star; fighters and the Falcon can jump to hyperspace; the cruiser holds station
+    const ship = (sp, x, y, bob, kind) => ({ sp, x, y, ph: Math.random() * TAU, bob: bob ?? 1, hidden: false,
+      fighter: kind === "fighter", jumper: kind !== "capital" });
     fleet = [
-      ship(M, FX + 2 * s, H * 0.2, 0.3), ship(F, FX - 4 * s, H * 0.64),
-      ship(X, FX - 12 * s, H * 0.42), ship(X, FX + 4 * s, H * 0.35), ship(X, FX + 6 * s, H * 0.5),
-      ship(Y, FX + 10 * s, H * 0.75), ship(A, FX - 10 * s, H * 0.85), ship(A, FX + 3 * s, H * 0.89),
+      ship(M, FX + 2 * s, H * 0.2, 0.3, "capital"), ship(F, FX - 4 * s, H * 0.64, 1, "freighter"),
+      ship(X, FX - 12 * s, H * 0.42, 1, "fighter"), ship(X, FX + 4 * s, H * 0.33, 1, "fighter"),
+      ship(X, FX + 6 * s, H * 0.5, 1, "fighter"), ship(Y, FX + 8 * s, H * 0.76, 1, "fighter"),
+      ship(A, FX - 10 * s, H * 0.85, 1, "fighter"), ship(A, FX + 3 * s, H * 0.9, 1, "fighter"),
     ];
     for (const sh of fleet) sh.x = clamp(sh.x, sh.sp.w / 2 + 2, W - sh.sp.w / 2 - 2);
   }
+  // During a rebel attack the fighters press in toward the Death Star, then pull back.
+  let attack = null;
   function shipPos(sh, now) {
-    return [sh.x + Math.sin(now * 0.05 + sh.ph) * 3 * S * (sh.fighter ? 1 : 0.3), sh.y + Math.round(Math.sin(now * 0.45 + sh.ph) * sh.bob)];
+    let push = 0;
+    if (attack && sh.fighter) {
+      const t = now - attack.t0;
+      push = smooth(t / 2.5) * (1 - smooth((t - attack.dur + 0.5) / 2.5)) * 18 * S;
+    }
+    return [sh.x - push + Math.sin(now * 0.05 + sh.ph) * 3 * S * (sh.fighter ? 1 : 0.3), sh.y + Math.round(Math.sin(now * 0.45 + sh.ph) * sh.bob)];
   }
   function drawFleet(ctx, now, bh) {
     for (const sh of fleet) {
@@ -526,7 +577,10 @@
       if (sc !== 1) continue;
       for (const [gx, gy, col] of sh.sp.glow) {
         ctx.fillStyle = rgba(col, 0.55 + Math.random() * 0.45); ctx.fillRect(ox + gx, oy + gy, 1, 1);
-        ctx.fillStyle = rgba(col, Math.random() * 0.35); ctx.fillRect(ox + gx + 1, oy + gy, 1, 1);
+      }
+      for (const [ex, ey, col] of sh.sp.exhaust || []) {                // the engine trail, flickering
+        const n = 2 + ((Math.random() * 4) | 0);
+        for (let i = 1; i <= n; i++) { ctx.fillStyle = rgba(col, (0.62 - i * 0.11) * (0.6 + Math.random() * 0.4)); ctx.fillRect(ox + ex + i, oy + ey, 1, 1); }
       }
     }
   }
@@ -534,13 +588,13 @@
   // ------------------------------------------------------------------ events
   function shootingStar(o) {
     o = o || {};
-    const dir = o.dir ?? (Math.random() < 0.5 ? 1 : -1), ang = o.ang ?? rnd(0.25, 0.6), sp = o.sp ?? rnd(160, 260);
-    const len = (o.len ?? rnd(12, 26)) * Math.sqrt(S), maxLife = o.life ?? rnd(0.9, 1.8), col = o.col || hex("#fff6d8");
+    const dir = o.dir ?? (Math.random() < 0.5 ? 1 : -1), ang = o.ang ?? rnd(0.25, 0.6), sp = o.sp ?? rnd(70, 110);
+    const len = (o.len ?? rnd(20, 36)) * Math.sqrt(S), maxLife = o.life ?? rnd(2.8, 4.2), col = o.col || hex("#fff6d8");
     let x = o.x ?? rnd(W * 0.1, W * 0.9), y = o.y ?? rnd(-5, H * 0.35), life = 0;
     const ux = Math.cos(ang) * dir, uy = Math.sin(ang);
     return { layer: "near", draw(ctx, dt) {
       life += dt; x += ux * sp * dt; y += uy * sp * dt;
-      const fade = life < 0.15 ? life / 0.15 : clamp(1 - (life - maxLife * 0.7) / (maxLife * 0.3), 0, 1);
+      const fade = life < 0.3 ? life / 0.3 : clamp(1 - (life - maxLife * 0.65) / (maxLife * 0.35), 0, 1);
       for (let i = 1; i < len; i++) {
         const a = fade * Math.pow(1 - i / len, 1.6); if (a < 0.03) break;
         ctx.fillStyle = rgba(col, a); ctx.fillRect(Math.round(x - ux * i), Math.round(y - uy * i), 1, 1);
@@ -551,34 +605,40 @@
     } };
   }
   function meteorShower() {
-    const n = rnd(8, 16) | 0, dir = Math.random() < 0.5 ? 1 : -1, ang = rnd(0.35, 0.55);
+    const n = rnd(18, 30) | 0, dir = Math.random() < 0.5 ? 1 : -1, ang = rnd(0.35, 0.55);   // ~12 s of meteors
     const rx = rnd(W * 0.2, W * 0.8), ry = rnd(-10, H * 0.15), kids = [];
     let spawned = 0, tt = 0, next = 0;
     return { layer: "near", draw(ctx, dt) {
       tt += dt;
       while (spawned < n && tt >= next) {
-        kids.push(shootingStar({ dir, ang: ang + rnd(-0.07, 0.07), x: rx + rnd(-35, 35), y: ry + rnd(-12, 12), sp: rnd(200, 300), len: rnd(8, 22), life: rnd(0.8, 1.6), big: Math.random() < 0.2 }));
-        spawned++; next += rnd(0.08, 0.4);
+        kids.push(shootingStar({ dir, ang: ang + rnd(-0.07, 0.07), x: rx + rnd(-60, 60), y: ry + rnd(-20, 20), sp: rnd(100, 150), len: rnd(12, 26), life: rnd(2, 3.2), big: Math.random() < 0.2 }));
+        spawned++; next += rnd(0.25, 0.7);
       }
       for (let i = kids.length - 1; i >= 0; i--) if (!kids[i].draw(ctx, dt)) kids.splice(i, 1);
       return spawned < n || kids.length > 0;
     } };
   }
   function supernova() {
+    // ~40 s: the star swells (4 s), flares (4 s), throws off a shock ring (10 s), leaves a glowing remnant
     const x = rnd(W * 0.04, W * 0.96) | 0, y = rnd(H * 0.05, H * 0.6) | 0, maxR = rnd(10, 22) * S, star = { size: 1, c: WHITE };
     let tt = 0;
     return { layer: "far", draw(ctx, dt) {
       tt += dt;
-      if (tt < 2) { star.size = 1 + ((tt / 2) * 2.5) | 0; drawStar(ctx, x, y, star, 0.4 + 0.6 * (tt / 2)); return true; }
-      const ph = (tt - 2) / 6;
-      if (tt < 3.2) { star.size = 4; drawStar(ctx, x, y, star, 1); line(ctx, x - 7 * S, y, x + 7 * S, y, WHITE, 0.2, 0.2); line(ctx, x, y - 7 * S, x, y + 7 * S, WHITE, 0.2, 0.2); }
-      const rr = maxR * smooth(Math.min(1, (tt - 2) / 5));
-      const fade = clamp(1 - (tt - 2) / 25, 0, 1);
+      if (tt < 4) { star.size = (1 + (tt / 4) * 2.5) | 0; drawStar(ctx, x, y, star, 0.4 + 0.6 * (tt / 4)); return true; }
+      const t2 = tt - 4, ph = t2 / 10;
+      if (t2 < 4) {                                                                               // the flare
+        const k = 1 - t2 / 4, reach = 7 * S * (1 + 0.35 * Math.sin(t2 * 5)) * (0.5 + 0.5 * k);
+        star.size = 4; drawStar(ctx, x, y, star, 1);
+        line(ctx, x - reach, y, x + reach, y, WHITE, 0.25 * k + 0.05, 0.25 * k + 0.05);
+        line(ctx, x, y - reach, x, y + reach, WHITE, 0.25 * k + 0.05, 0.25 * k + 0.05);
+      } else if (t2 < 10) { star.size = 2; drawStar(ctx, x, y, star, 0.7 * (1 - (t2 - 4) / 6)); }
+      const rr = maxR * smooth(Math.min(1, t2 / 8));
+      const fade = clamp(1 - t2 / 36, 0, 1);
       for (let dy = -rr; dy <= rr; dy++) for (let dx = -rr; dx <= rr; dx++) {                   // remnant
         const d = Math.hypot(dx, dy) / (rr || 1); if (d > 1) continue;
         const px = (x + dx) | 0, py = (y + dy) | 0;
         if (hash2(px, py) < 0.55 * (1 - d) * (0.6 + noise(px * 0.2, py * 0.2, 2, 2))) {
-          ctx.fillStyle = rgba(pick(P.nova, 0.2 + 0.5 * (1 - d), px, py), 0.35 * fade * (1 - d * 0.5)); ctx.fillRect(px, py, 1, 1);
+          ctx.fillStyle = rgba(pick(P.nova, 0.2 + 0.5 * (1 - d), px, py), 0.45 * fade * (1 - d * 0.5)); ctx.fillRect(px, py, 1, 1);
         }
       }
       if (ph <= 1) {                                                                            // shock ring
@@ -588,11 +648,11 @@
           ctx.fillStyle = rgba(pick(P.nova, 1 - ph, px, py), (1 - ph) * 0.9); ctx.fillRect(px, py, 1, 1);
         }
       }
-      return tt < 27;
+      return tt < 40;
     } };
   }
   function comet() {
-    const fromLeft = Math.random() < 0.5, dur = rnd(18, 30), tail = rnd(22, 40) * S, col = hex("#c4e8ff");
+    const fromLeft = Math.random() < 0.5, dur = rnd(24, 36), tail = rnd(22, 40) * S, col = hex("#c4e8ff");
     let x = fromLeft ? -12 : W + 12, y = rnd(H * 0.08, H * 0.5), tt = 0;
     const vx = ((fromLeft ? W + 12 : -12) - x) / dur, vy = rnd(-H * 0.2, H * 0.3) / dur;
     return { layer: "mid", draw(ctx, dt) {
@@ -623,7 +683,7 @@
         return pick(P.rock, lum + (noise((dx * Math.cos(rot) - dy * Math.sin(rot)) * 0.5 + 9, (dx * Math.sin(rot) + dy * Math.cos(rot)) * 0.5, 3, 2) - 0.5) * 0.5, x, y);
       }));
     }
-    const fromLeft = Math.random() < 0.5, dur = rnd(14, 22);
+    const fromLeft = Math.random() < 0.5, dur = rnd(18, 28);
     let x = fromLeft ? -10 : W + 10, y = rnd(H * 0.15, H * 0.85), tt = 0;
     const vx = (fromLeft ? W + 20 : -W - 20) / dur, vy = rnd(-H * 0.25, H * 0.25) / dur;
     return { layer: "mid", draw(ctx, dt) {
@@ -638,103 +698,144 @@
     let tt = 0;
     return { layer: "far", draw(ctx, dt) {
       tt += dt;
-      const fade = Math.min(1, tt / 1, (7 - tt) / 1.5), a = (tt * TAU) / 0.9;
+      const fade = Math.min(1, tt / 1.5, (15 - tt) / 2.5), a = (tt * TAU) / 1.2;
       drawStar(ctx, x, y, { size: 2, c: col }, fade);
       for (const s of [1, -1]) line(ctx, x, y, x + Math.cos(a) * len * s, y + Math.sin(a) * len * s, col, 0.8 * fade, 0);
-      return tt < 7;
+      return tt < 15;
     } };
   }
   function hyperspace() {
-    const pool = fleet.filter((s) => !s.hidden && s.sp.w < 32);
+    // ~2 s to spool up and jump, 6-10 s away, ~2 s to drop back in
+    const pool = fleet.filter((s) => !s.hidden && s.jumper);
     if (!pool.length) return null;
-    const sh = pool[(Math.random() * pool.length) | 0], away = rnd(4, 8), col = hex("#d8f4ff");
+    const sh = pool[(Math.random() * pool.length) | 0], away = rnd(6, 10), col = hex("#d8f4ff");
+    const back = 2.4 + away;
     let tt = 0, from;
     return { layer: "near", draw(ctx, dt, now) {
       tt += dt;
-      const [x, y] = shipPos(sh, now);
-      if (tt < 0.5) {                                             // stretch and go
+      const [x, y] = shipPos(sh, now), rear = x + sh.sp.w / 2;
+      if (tt < 1.2) {                                                   // engines spool up
+        const k = tt / 1.2;
+        for (let i = 0; i < 4; i++) { ctx.fillStyle = rgba(col, k * (1 - i / 4) * (0.7 + Math.random() * 0.3)); ctx.fillRect(Math.round(rear + i), Math.round(y - 1), 1, 3); }
+      } else if (tt < 2.4) {                                            // the jump: a streak that lingers
         if (!from) from = [x, y];
         sh.hidden = true;
-        const k = smooth(tt / 0.5), x0 = from[0] - k * W * 0.7;
-        line(ctx, from[0] + sh.sp.w / 2, y, x0, y, col, 0.1, 1);
-        line(ctx, from[0] + sh.sp.w / 2, y - 1, x0 + 10, y - 1, col, 0.05, 0.4);
-        line(ctx, from[0] + sh.sp.w / 2, y + 1, x0 + 10, y + 1, col, 0.05, 0.4);
-      } else if (tt < 0.5 + away) {
+        const k = smooth(Math.min(1, (tt - 1.2) / 0.35)), fade = 1 - smooth((tt - 1.5) / 0.9), x0 = from[0] - k * W * 0.8;
+        line(ctx, from[0] + sh.sp.w / 2, from[1], x0, from[1], col, 0.1 * fade, fade);
+        line(ctx, from[0] + sh.sp.w / 2, from[1] - 1, x0 + 10, from[1] - 1, col, 0.05 * fade, 0.45 * fade);
+        line(ctx, from[0] + sh.sp.w / 2, from[1] + 1, x0 + 10, from[1] + 1, col, 0.05 * fade, 0.45 * fade);
+        if (tt < 1.45) { ctx.fillStyle = rgba(WHITE, 1 - (tt - 1.2) / 0.25); ctx.fillRect(Math.round(from[0] - 2), Math.round(from[1] - 2), 5, 5); }
+      } else if (tt < back) {
         sh.hidden = true;
-      } else if (tt < 0.9 + away) {                               // drop back in from behind
-        const k = smooth((tt - 0.5 - away) / 0.4), xs = lerp(W + 20, x, k);
+      } else if (tt < back + 1.2) {                                     // drop back in from behind
+        const k = smooth((tt - back) / 1.2), xs = lerp(W + 20, x, k);
         line(ctx, W + 20, y, xs, y, col, 0, 1);
+        line(ctx, W + 20, y - 1, xs + 8, y - 1, col, 0, 0.35);
+        line(ctx, W + 20, y + 1, xs + 8, y + 1, col, 0, 0.35);
       } else {
         sh.hidden = false;
-        if (tt < 1.2 + away) { ctx.fillStyle = rgba(WHITE, 1.2 + away - tt); ctx.fillRect(Math.round(x - 1), Math.round(y - 1), 3, 3); }
-        else return false;
+        const k = (tt - back - 1.2) / 0.8;
+        if (k >= 1) return false;
+        ctx.fillStyle = rgba(WHITE, 1 - k); ctx.fillRect(Math.round(x - sh.sp.w / 2 - 1), Math.round(y - 1), 3, 3);
       }
       return true;
     } };
   }
   function superlaser() {
+    // ~19 s: the dish charges (4 s), the eight tributary beams light one by one (1.6 s), the main beam
+    // fires for 10 s with the target burning, then the target blows (3.5 s)
     const [dx, dy] = ds.dish, dir = ds.dishDir, R = ds.r;
     const focus = [dx + dir[0] * R * 0.55, dy + dir[1] * R * 0.55];
     const target = [rnd(W * 0.38, W * 0.62), rnd(H * 0.04, H * 0.2)];
     const tribs = Array.from({ length: 8 }, (_, i) => { const a = (i / 8) * TAU; return [dx + Math.cos(a) * R * 0.23, dy + Math.sin(a) * R * 0.2]; });
+    const CHARGE = 4, TRIB = 1.6, FIRE = 10, AFTER = 3.5;
+    const t1 = CHARGE, t2 = t1 + TRIB, t3 = t2 + FIRE, end = t3 + AFTER;
+    const HOT = ramp("#0f3d17", "#1f8f2e", "#39ff14", "#b9ff9e", "#ffffff");
     let tt = 0;
     return { layer: "near", draw(ctx, dt) {
       tt += dt;
-      if (tt < 2.5) {                                              // charging: the dish glows
-        const k = tt / 2.5;
-        for (let i = 0; i < 18 * k; i++) {
-          const a = Math.random() * TAU, r = Math.random() * R * 0.22;
-          ctx.fillStyle = rgba(SABER, 0.3 + 0.6 * k); ctx.fillRect(Math.round(dx + Math.cos(a) * r), Math.round(dy + Math.sin(a) * r * 0.9), 1, 1);
+      if (tt < t3) {                                               // the dish fills with green light
+        const k = Math.min(1, tt / CHARGE), n = 10 + 22 * k;
+        for (let i = 0; i < n; i++) {
+          const a = Math.random() * TAU, r = Math.random() * R * 0.22 * (tt < t2 ? 1 - 0.5 * k * Math.random() : 1);
+          ctx.fillStyle = rgba(SABER, 0.25 + 0.6 * k); ctx.fillRect(Math.round(dx + Math.cos(a) * r), Math.round(dy + Math.sin(a) * r * 0.9), 1, 1);
         }
-      } else if (tt < 3.3) {
-        for (const [tx, ty] of tribs) line(ctx, tx, ty, focus[0], focus[1], SABER, 0.9, 0.9);
-      } else if (tt < 4.4) {
-        for (const [tx, ty] of tribs) line(ctx, tx, ty, focus[0], focus[1], SABER, 0.6, 0.6);
-        line(ctx, focus[0], focus[1], target[0], target[1], SABER, 1, 1, 2);
-        line(ctx, focus[0], focus[1], target[0], target[1], WHITE, 0.9, 0.9);
       }
-      if (tt > 4.2 && tt < 6) {                                    // impact flash, far away
-        const k = (tt - 4.2) / 1.8, r = k * 12 * S, n = Math.max(12, (TAU * r) | 0);
-        for (let i = 0; i < n; i++) { const a = (i / n) * TAU; ctx.fillStyle = rgba(mix(WHITE, SABER, k), 1 - k); ctx.fillRect(Math.round(target[0] + Math.cos(a) * r), Math.round(target[1] + Math.sin(a) * r), 1, 1); }
+      if (tt >= t1 && tt < t3 + 0.5) {                             // tributary beams, lit in turn
+        const lit = Math.min(8, 1 + (((tt - t1) / TRIB) * 8) | 0), f = tt < t3 ? 1 : 1 - (tt - t3) / 0.5;
+        for (let i = 0; i < lit; i++) line(ctx, tribs[i][0], tribs[i][1], focus[0], focus[1], SABER, (tt < t2 ? 0.9 : 0.55 + 0.2 * Math.random()) * f, (tt < t2 ? 0.9 : 0.7) * f);
       }
-      return tt < 6;
+      if (tt >= t2 && tt < t3 + 0.5) {                             // the beam, 10 s
+        const f = tt < t3 ? 1 : 1 - (tt - t3) / 0.5, wob = 0.82 + 0.18 * Math.sin(tt * 37) * Math.sin(tt * 11);
+        const bx = target[0] - focus[0], by = target[1] - focus[1], bl = Math.hypot(bx, by) || 1, nx = -by / bl, ny = bx / bl;
+        for (const o of [-2, 2]) line(ctx, focus[0] + nx * o, focus[1] + ny * o, target[0] + nx * o, target[1] + ny * o, SABER, 0.18 * f, 0.18 * f);
+        line(ctx, focus[0], focus[1], target[0], target[1], SABER, f * wob, f * wob, 2);
+        line(ctx, focus[0], focus[1], target[0], target[1], WHITE, 0.9 * f * wob, 0.9 * f * wob);
+        const burn = smooth((tt - t2) / FIRE), r = 2 + 6 * S * burn;       // the target burns hotter
+        for (let yy = -r; yy <= r; yy++) for (let xx = -r; xx <= r; xx++) {
+          const d = Math.hypot(xx, yy) / r; if (d > 1) continue;
+          const px = Math.round(target[0] + xx), py = Math.round(target[1] + yy);
+          if (Math.random() < 0.85 - d * 0.5) { ctx.fillStyle = rgba(pick(HOT, (1 - d) * (0.6 + 0.4 * burn), px, py), f * (1 - d * 0.6)); ctx.fillRect(px, py, 1, 1); }
+        }
+        for (let i = 0; i < 6; i++) {                                  // sparks off the impact
+          const a = Math.random() * TAU, sr = r + Math.random() * 6 * S;
+          ctx.fillStyle = rgba(Math.random() < 0.5 ? WHITE : SABER, f * 0.8); ctx.fillRect(Math.round(target[0] + Math.cos(a) * sr), Math.round(target[1] + Math.sin(a) * sr), 1, 1);
+        }
+      }
+      if (tt > t3 - 0.2) {                                         // the blast: a ring and debris
+        const k = clamp((tt - t3 + 0.2) / (AFTER + 0.2), 0, 1), r = 6 * S + k * 26 * S, n = Math.max(24, (TAU * r) | 0);
+        for (let i = 0; i < n; i++) { const a = (i / n) * TAU; ctx.fillStyle = rgba(mix(WHITE, SABER, k), (1 - k) * 0.9); ctx.fillRect(Math.round(target[0] + Math.cos(a) * r), Math.round(target[1] + Math.sin(a) * r * 0.8), 1, 1); }
+        for (let i = 0; i < 20; i++) {
+          const a = hash2(i, 7) * TAU, dr = (0.3 + hash2(i, 3) * 0.7) * r;
+          ctx.fillStyle = rgba(pick(P.rock, 0.3 + hash2(i, 5) * 0.6, i, 1), 1 - k); ctx.fillRect(Math.round(target[0] + Math.cos(a) * dr), Math.round(target[1] + Math.sin(a) * dr), 1, 1);
+        }
+        if (k < 0.25) { const fr = 3 + k * 20 * S; ctx.fillStyle = rgba(WHITE, 1 - k * 4); ctx.fillRect(Math.round(target[0] - fr / 2), Math.round(target[1] - fr / 2), Math.round(fr), Math.round(fr)); }
+      }
+      return tt < end;
     } };
   }
-  // X-wings strafe the Death Star: red bolts, small explosions on its surface.
+  // The fighters press in on the Death Star for ~12 s: red bolts from their cannons, small explosions on
+  // its surface, then they pull back.
   function rebelAttack() {
     const shooters = fleet.filter((sh) => !sh.hidden && sh.fighter);
     if (!shooters.length) return null;
     const bolts = [], booms = [], RED = hex("#ff3b30"), HOT = hex("#ffb199"), FIRE = ramp("#7a1c05", "#e8560f", "#ffb347", "#fff1c9");
-    const dur = rnd(2.5, 4);
-    let tt = 0, next = 0;
+    const dur = rnd(10, 14);
+    let tt = 0, next = 1.2, shot = 0;
     return { layer: "near", draw(ctx, dt, now) {
+      if (!tt) attack = { t0: now, dur };
       tt += dt;
-      while (tt < dur && tt >= next) {
-        const sh = shooters[(Math.random() * shooters.length) | 0], [x, y] = shipPos(sh, now);
-        const sx = x - sh.sp.w / 2, sy = y + (Math.random() < 0.5 ? -1 : 1) * sh.sp.h * 0.45;
-        const tx = ds.x + rnd(-0.55, 0.55) * ds.r, ty = ds.y + rnd(-0.55, 0.55) * ds.r;
-        const d = Math.hypot(tx - sx, ty - sy) || 1;
-        bolts.push({ x: sx, y: sy, ux: (tx - sx) / d, uy: (ty - sy) / d, tx, ty, left: d });
-        next += rnd(0.1, 0.3);
+      while (tt < dur - 0.8 && tt >= next) {
+        const sh = shooters[(Math.random() * shooters.length) | 0];
+        if (!sh.hidden) {
+          const [x, y] = shipPos(sh, now), gun = sh.sp.guns[shot++ % sh.sp.guns.length];
+          const sx = x - sh.sp.w / 2 + gun[0], sy = y - sh.sp.h / 2 + gun[1];
+          const tx = ds.x + rnd(-0.55, 0.55) * ds.r, ty = ds.y + rnd(-0.55, 0.55) * ds.r;
+          const d = Math.hypot(tx - sx, ty - sy) || 1;
+          bolts.push({ x: sx, y: sy, ux: (tx - sx) / d, uy: (ty - sy) / d, tx, ty, left: d });
+        }
+        next += rnd(0.12, 0.45);
       }
       for (let i = bolts.length - 1; i >= 0; i--) {
-        const b = bolts[i], step = 260 * dt;
+        const b = bolts[i], step = 220 * dt;
         b.x += b.ux * step; b.y += b.uy * step; b.left -= step;
         if (b.left <= 0) { booms.push({ x: b.tx, y: b.ty, t: 0 }); bolts.splice(i, 1); continue; }
-        for (let k = 0; k < 5; k++) { ctx.fillStyle = rgba(k ? RED : HOT, 1 - k * 0.18); ctx.fillRect(Math.round(b.x - b.ux * k), Math.round(b.y - b.uy * k), 1, 1); }
+        for (let k = 0; k < 6; k++) { ctx.fillStyle = rgba(k ? RED : HOT, 1 - k * 0.15); ctx.fillRect(Math.round(b.x - b.ux * k), Math.round(b.y - b.uy * k), 1, 1); }
       }
       for (let i = booms.length - 1; i >= 0; i--) {
         const bm = booms[i]; bm.t += dt;
-        const k = bm.t / 0.6, r = 1 + k * 4 * S;
-        for (let a = 0; a < 10; a++) {
-          const ang = a * 0.63 + bm.t * 3;
+        const k = bm.t / 0.9, r = 1 + k * 5 * S;
+        for (let a = 0; a < 12; a++) {
+          const ang = a * 0.52 + bm.t * 3;
           ctx.fillStyle = rgba(pick(FIRE, 1 - k, a, i), 1 - k);
           ctx.fillRect(Math.round(bm.x + Math.cos(ang) * r), Math.round(bm.y + Math.sin(ang) * r), 1, 1);
         }
         if (k < 0.4) { ctx.fillStyle = rgba(WHITE, 1 - k * 2); ctx.fillRect(Math.round(bm.x), Math.round(bm.y), 1, 1); }
-        if (bm.t > 0.6) booms.splice(i, 1);
+        if (bm.t > 0.9) booms.splice(i, 1);
       }
-      return tt < dur || bolts.length > 0 || booms.length > 0;
+      const more = tt < dur + 1.5 || bolts.length > 0 || booms.length > 0;   // +1.5 s: time to pull back
+      if (!more) attack = null;
+      return more;
     } };
   }
   // The day's move tilts the odds (set from the dashboard): rebels press the attack on up days, the
@@ -753,11 +854,13 @@
     superlaser: [() => 4 + 16 * down(), superlaser],
   };
   const weight = (k) => (typeof EVENTS[k][0] === "function" ? EVENTS[k][0]() : EVENTS[k][0]);
+  const SOLO = new Set(["rebel_attack", "meteor_shower", "supernova", "hyperspace", "superlaser"]);  // one at a time
   function start(name) {
     if (consumed || BH) return;
     if (name === "blackhole") return startBlackHole();
     const e = EVENTS[name]; if (!e) return;
-    const ev = e[1](); if (ev) events.push(ev);
+    if (SOLO.has(name) && events.some((ev) => ev.name === name)) return;
+    const ev = e[1](); if (ev) { ev.name = name; events.push(ev); }
   }
   function pickEvent() {
     let total = 0; for (const k in EVENTS) total += weight(k);
@@ -934,7 +1037,8 @@
     if (cfg.force && !forced[cfg.force]) { forced[cfg.force] = true; setTimeout(() => start(cfg.force), 1500); }
   }
   const setMood = (m) => { mood = clamp(Number(m) || 0, -1, 1); };
-  const api = { alive: true, consumed: false, configure, setMood, trigger: start, events: Object.keys(EVENTS).concat("blackhole") };
+  const api = { alive: true, consumed: false, configure, setMood, trigger: start, events: Object.keys(EVENTS).concat("blackhole"),
+    active: () => events.map((e) => e.name) };
   window.__space = api;
 
   layout();

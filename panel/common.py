@@ -111,7 +111,11 @@ def portfolio_data() -> dict | None:
     except Exception:  # noqa: BLE001 - e.g. read-only login before the first sync has created the tables
         st.info("The database isn't ready yet. It fills in after the first sync runs.")
         return None
-    wanted = frozenset((queries.wanted_quotes(stored) if not stored.empty else set()) | {BTC_QUOTE})
+    from portfolio.config import ticker_watch
+
+    watch = ticker_watch()
+    wanted = frozenset((queries.wanted_quotes(stored) if not stored.empty else set()) | {BTC_QUOTE}
+                       | {(venue, sym) for _, venue, sym in watch})
     quotes, quote_errors = live_quotes(wanted)
     holdings = queries.reprice(stored, quotes) if not stored.empty else stored
     btc = quotes.get(BTC_QUOTE)
@@ -119,7 +123,17 @@ def portfolio_data() -> dict | None:
     return {"accounts": accounts, "holdings": holdings, "cash": cash, "quote_errors": quote_errors,
             "totals": queries.totals(holdings, cash) if not accounts.empty else None,
             "btc_price": btc.price if btc else None, "btc_open": btc.prev_close if btc else None,
-            "assets": assets, "themes": lenses.by_theme(assets)}
+            "assets": assets, "themes": lenses.by_theme(assets), "watch": watch_rows(watch, quotes)}
+
+
+def watch_rows(watch: list[tuple[str, str, str]], quotes: dict) -> list[tuple[str, float, float | None]]:
+    """(label, price, change today) for each watched symbol that has a quote."""
+    out = []
+    for label, venue, sym in watch:
+        q = quotes.get((venue, sym))
+        if q and q.price:
+            out.append((label, q.price, q.price / q.prev_close - 1 if q.prev_close else None))
+    return out
 
 
 @st.cache_data(ttl=300, show_spinner="Rebuilding your history…")

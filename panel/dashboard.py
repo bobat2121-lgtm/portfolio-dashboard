@@ -27,7 +27,7 @@ def render() -> None:
     accounts, holdings, cash, totals = data["accounts"], data["holdings"], data["cash"], data["totals"]
     assets, themes, btc_price = data["assets"], data["themes"], data["btc_price"]
 
-    views.ticker(assets, btc_price, data["btc_open"])
+    views.ticker(assets, btc_price, data["btc_open"], data["watch"])
     header("BTC Supernova")
     if accounts.empty:
         st.info("No data yet. It appears after the first sync (GitHub Actions, or `python -m jobs.sync` locally).")

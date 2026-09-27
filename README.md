@@ -99,7 +99,9 @@ API page, Neon role password), create a new one, and update `.env` and the GitHu
 
 ## Ways to view it
 
-Two pages (top left): **Dashboard** and **Taxes**. A ticker of your holdings scrolls across the top.
+Two pages (top left): **Dashboard** and **Taxes**. A ticker scrolls across the top: BTC, your holdings over
+$100, then a watchlist (SPCX, QQQ, SPY, TSLA, ETH, BMNR, STRC, SATA, ZEC, RUT) set in
+[config/portfolio.yaml](config/portfolio.yaml) under `ticker.watch`.
 
 | Dashboard tab | What it shows |
 |---|---|
@@ -132,8 +134,11 @@ hyperspace; on down days it charges its superlaser.
 The dashboard sits over a pixel-art galaxy drawn live in the browser ([panel/assets/space.js](panel/assets/space.js)):
 twinkling stars and nebula, the nine planets orbiting the sun (with real phases, Saturn's rings and Earth's moon),
 Tatooine, Hoth, Mustafar and Endor far off, the Death Star with its TIE patrol on the left and the rebel fleet on
-the right. Every 12 to 72 s something happens: a shooting star, meteor shower, supernova, comet, tumbling
-asteroid, pulsar, a fighter jumping to hyperspace, or the Death Star charging its superlaser. About once in 300
+the right, drawn side-on and flying at it (X-wings, a Y-wing, A-wings, the Falcon and a Mon Calamari cruiser).
+Every 12 to 72 s something happens, each long enough to watch: a shooting star (~3 s), meteor shower (~12 s),
+supernova (swells and flares for 8 s, remnant fades over 40 s), comet, tumbling asteroid, pulsar (15 s), a ship
+jumping to hyperspace and back, a rebel attack run (~12 s), or the Death Star charging and firing its superlaser
+(a 10 s beam). About once in 300
 events (roughly every 3.5 hours of viewing) a black hole opens, pulls everything in, swallows the dashboard and leaves
 the tab black until you reload.
 

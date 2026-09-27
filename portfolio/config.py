@@ -61,6 +61,17 @@ def pricing() -> dict:
     return section("pricing")
 
 
+def ticker_watch() -> list[tuple[str, str, str]]:
+    """(label, venue, symbol) for the extra symbols on the top bar (config: ticker.watch), in order.
+    "kraken:ETH" is Kraken's price for ETH; anything else is a Yahoo symbol."""
+    out = []
+    for label, src in (section("ticker").get("watch") or {}).items():
+        src = str(src or label)
+        venue, sym = src.split(":", 1) if src.startswith("kraken:") else ("yahoo", src)
+        out.append((str(label), venue, sym))
+    return out
+
+
 def performance_start():
     """First day of the Performance timeline (config: performance.start), or None for all history."""
     from datetime import date
