@@ -82,11 +82,11 @@ c1, c2, c3, c4, c5, c6 = st.columns(6)
 c1.metric("Total", f"${totals['total']:,.2f}")
 c2.metric("Today", f"${totals['day_change']:,.2f}",
           f"{totals['day_change'] / (totals['total'] - totals['day_change']):.2%}" if totals["total"] else None)
-c3.metric("Invested", f"${totals['invested']:,.2f}", help="What your positions are worth now (excludes cash).")
-c4.metric("Cost basis", f"${totals['cost_basis']:,.2f}",
+c3.metric("Cost basis", f"${totals['cost_basis']:,.2f}",
           help="What you paid for the positions you hold now."
           + (f" {totals['unknown_basis']} position(s) have no known cost and are left out."
              if totals["unknown_basis"] else ""))
+c4.metric("Invested", f"${totals['invested']:,.2f}", help="What your positions are worth now (excludes cash).")
 c5.metric("Cash", f"${totals['cash']:,.2f}")
 c6.metric("Unrealized", f"${totals['unrealized']:,.2f}",
           help=f"Invested minus cost basis. Cost basis known for {totals['basis_coverage']:.0%} of invested value.")

@@ -31,7 +31,7 @@ def test_dashboard_renders_with_data(tmp_db, monkeypatch):
     at = AppTest.from_file(APP, default_timeout=30).run()
     assert not at.exception, at.exception
     labels = [mt.label for mt in at.metric]
-    assert labels == ["Total", "Today", "Invested", "Cost basis", "Cash", "Unrealized"]
+    assert labels == ["Total", "Today", "Cost basis", "Invested", "Cash", "Unrealized"]
     assert [t.label for t in at.tabs] == ["Overview", "Holdings", "Activity", "Sync"]
 
 
