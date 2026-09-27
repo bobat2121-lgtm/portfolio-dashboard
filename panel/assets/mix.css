@@ -22,3 +22,4 @@
   content: ""; position: absolute; left: 3px; top: 3px; width: 14px; height: 14px; pointer-events: none;
   background: var(--sw-yellow); clip-path: polygon(0 12px, 12px 0, 14px 0, 0 14px);
 }
+[data-testid="stTab"][aria-selected="true"] { text-shadow: 0 0 3px #000, 0 0 12px rgba(255, 232, 31, .5); }

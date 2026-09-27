@@ -13,3 +13,5 @@ h1, h2, h3, p, [data-testid="stMetricValue"], [data-testid="stMetricLabel"], [da
 [data-testid="stDataFrame"] { border-color: transparent; border-top: 1px solid var(--sw-yellow-faint); }
 [data-testid="stForm"] { background: transparent !important; border: 1px solid var(--sw-yellow-faint) !important; border-radius: 0 !important; }
 [data-testid="stAlertContainer"] { background: rgba(8, 12, 20, .35) !important; }
+h1 { text-shadow: 0 0 3px #000, 0 0 18px rgba(255, 232, 31, .4); }
+[data-testid="stTab"][aria-selected="true"] { text-shadow: 0 0 3px #000, 0 0 12px rgba(255, 232, 31, .5); }

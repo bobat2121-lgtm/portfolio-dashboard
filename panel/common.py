@@ -69,8 +69,11 @@ def gate() -> None:
 
 def can_sync_here() -> bool:
     """Broker keys live only in GitHub Actions (and your local .env), never in the cloud app."""
+    from portfolio.config import env
     from portfolio.sources import all_sources
 
+    if env("DEMO"):
+        return False  # never pull real accounts into the made-up demo database
     return any(src.missing_config() is None for src in all_sources())
 
 

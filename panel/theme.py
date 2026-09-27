@@ -63,11 +63,29 @@ def current_style() -> str:
     return s if s in STYLES else DEFAULT_STYLE
 
 
+def scope(css: str, style: str) -> str:
+    """Prefix every rule with html[data-space-style="<style>"], so all three styles can load at once."""
+    out = []
+    for block in re.sub(r"/\*.*?\*/", "", css, flags=re.S).split("}"):
+        if "{" not in block:
+            continue
+        selectors, body = block.split("{", 1)
+        scoped = ", ".join(f'html[data-space-style="{style}"] {s.strip()}' for s in selectors.split(",") if s.strip())
+        out.append(f"{scoped} {{{' '.join(body.split())}}}")  # one rule per line
+    return "\n".join(out)
+
+
 def apply(style: str) -> None:
-    """Inject the fonts, the CSS for `style`, and the space scene. Safe to call on every rerun."""
+    """Inject the fonts, the CSS, and the space scene. Safe to call on every rerun.
+
+    The style sheet is the same on every run: all three panel styles are in it, each scoped to the
+    data-space-style attribute on <html>, which space.js sets from `style`. (Streamlit keeps style-only
+    st.html blocks around between reruns, so swapping the CSS itself would leave the old style winning.)
+    """
     base = _read("base.css")
     imports, rest = base.split("/*END-IMPORTS*/", 1)  # @import has to come before @font-face
-    st.html(f"<style>{imports}{_font_face()}{rest}{_read(f'{style}.css')}</style>")
+    variants = "\n".join(scope(_read(f"{s}.css"), s) for s in STYLES)
+    st.html(f"<style>{imports}{_font_face()}{rest}{variants}</style>")
     force = st.query_params.get("space")  # ?space=supernova etc., for trying events out
     cfg = {"style": style, "force": force if force in EVENTS else None, "odds": BLACK_HOLE_ODDS,
            "minGap": 20, "maxGap": 120}
@@ -75,9 +93,17 @@ def apply(style: str) -> None:
     st.html(f'<div id="space-boot"></div><script>{js}</script>', unsafe_allow_javascript=True)
 
 
+def _picked() -> None:
+    choice = st.session_state.get("sw_style")
+    if not choice:  # clicking the selected option again clears it; keep the current look instead
+        st.session_state["sw_style"] = current_style()
+    else:
+        st.query_params["style"] = choice
+
+
 def style_picker() -> None:
     """Segmented control for the three looks; remembered in the URL (?style=)."""
-    picked = st.segmented_control("Panels", list(STYLES), format_func=STYLES.get, key="sw_style",
-                                  default=current_style(), label_visibility="collapsed")
-    if picked and st.query_params.get("style") != picked:
-        st.query_params["style"] = picked
+    if not st.session_state.get("sw_style"):
+        st.session_state["sw_style"] = current_style()
+    st.segmented_control("Panels", list(STYLES), format_func=STYLES.get, key="sw_style", on_change=_picked,
+                         label_visibility="collapsed")
