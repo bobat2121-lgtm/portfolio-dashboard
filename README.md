@@ -142,8 +142,8 @@ the right, drawn side-on and flying at it (X-wings, a Y-wing, A-wings, the Falco
 Every 12 to 72 s something happens, each long enough to watch: a shooting star (~3 s), meteor shower (~12 s),
 supernova (swells and flares for 8 s, remnant fades over 40 s), comet, tumbling asteroid, pulsar (15 s), a ship
 jumping to hyperspace and back, a rebel attack run (~12 s), or the Death Star charging and firing its superlaser
-(a 10 s beam). About once in 300
-events (roughly every 3.5 hours of viewing) a black hole opens, pulls everything in, swallows the dashboard and leaves
+(a 10 s beam). About once in 128
+events (roughly every 1.5 hours of viewing, at random) a black hole opens, pulls everything in, swallows the dashboard and leaves
 the tab black until you reload.
 
 - **Panel style:** `mix` (floating header and numbers, see-through data panels). The other two are still in the

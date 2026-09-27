@@ -29,7 +29,7 @@ DEFAULT_STYLE = "mix"
 EVENTS = {"shooting_star", "meteor_shower", "supernova", "comet", "asteroid", "pulsar", "hyperspace", "superlaser",
           "rebel_attack", "blackhole"}
 STAR_DENSITY = 0.4  # share of the full starfield that's drawn; ?stars=0.7 (0.2-2) tries another
-BLACK_HOLE_ODDS = 1 / 300  # per random event; events come every 12-72 s, so roughly once in 3.5 hours
+BLACK_HOLE_ODDS = 1 / 128  # per random event; events average 42 s apart (12-72 s), so ~every 90 min of viewing
 
 
 @lru_cache(maxsize=1)
