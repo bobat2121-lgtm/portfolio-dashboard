@@ -9,6 +9,7 @@ import streamlit as st
 from panel import holdings as holdings_panel, theme, views
 from panel.common import betas, header, history, load, panel, portfolio_data, tax_report
 from portfolio import achievements, lenses, queries
+from portfolio.taxes import rates as tax_rates
 from portfolio.config import performance_start
 from portfolio.history import rebase, summary, ytd
 from portfolio.timeutil import today_ny, utcnow
@@ -52,7 +53,11 @@ def render() -> None:
 
     # the front page: the holdings, then panels that open on demand
     with assets_tab, panel("assets"):
-        holdings_panel.render(assets)
+        rep = tax_report(holdings)                   # the drawer under a card reads its lots and sales
+        holdings_panel.render(assets, {
+            "lots": rep.lots, "realized": rep.realized, "txns": load("all_transactions"), "prices": load("price_history"),
+            "splits": load("splits"), "holdings": holdings, "cash": cash, "assets": assets,
+            "since": performance_start(), "today": today_ny(), "rates": tax_rates()})
     with assets_tab, panel("performance"):
         with st.expander(views.performance_label(hist), expanded=False):
             views.performance(hist)

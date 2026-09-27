@@ -1,7 +1,8 @@
 """The front page's "every holding" panel: one card per holding, all accounts combined.
 
 Each card leads with the symbol and what the holding is worth, then four readouts on their own lines
-so nothing crowds: price, today's move, gain on cost, and share of the portfolio.
+so nothing crowds: price, today's move, gain on cost, and share of the portfolio. Click a card and a
+drawer opens right under its row (panel/drawer.py) with the tranches, trades and taxes behind it.
 """
 from __future__ import annotations
 
@@ -31,7 +32,7 @@ def price_fmt(v) -> str:
         return f"${v:,.0f}"
     if a >= 100:
         return f"${v:,.1f}"
-    if a >= 1:
+    if a >= 1 or a == 0:
         return f"${v:,.2f}"
     return f"${v:,.3f}"
 
@@ -82,23 +83,52 @@ def _title(r) -> tuple[str, str, str]:
     return str(r.asset), name, full
 
 
-def cards(shown: pd.DataFrame) -> str:
-    out = []
-    for r in shown.itertuples():
-        sym, name, full = _title(r)
-        chips = "".join(f"<span>{esc(a)}</span>" for a in r.accounts)
-        out.append(
-            f'<div class="sw-card sw-hold"><div class="sw-hold-head"><span class="sw-sym">{esc(sym)}</span>'
+def card(r, is_open: bool = False) -> str:
+    sym, name, full = _title(r)
+    chips = "".join(f"<span>{esc(a)}</span>" for a in r.accounts)
+    return (f'<div class="sw-card sw-hold{" open" if is_open else ""}"><div class="sw-hold-head"><span class="sw-sym">{esc(sym)}</span>'
             f'<span class="sw-hold-name" title="{esc(full)}">{esc(name)}</span></div>'
             f'<div class="sw-hold-value">{usd(r.market_value)}</div><div class="sw-cells">{_cells(r)}</div>'
             f'<div class="sw-chips">{chips}</div></div>')
-    return f'<div class="sw-cards sw-cards-hold">{"".join(out)}</div>'
 
 
-def render(assets: pd.DataFrame) -> None:
+def cards(shown: pd.DataFrame) -> str:
+    return f'<div class="sw-cards sw-cards-hold">{"".join(card(r) for r in shown.itertuples())}</div>'
+
+
+def _toggle(asset: str) -> None:
+    st.session_state["sw_open"] = None if st.session_state.get("sw_open") == asset else asset
+
+
+def render(assets: pd.DataFrame, ctx: dict | None = None) -> None:
     st.subheader("Every holding, all accounts combined")
     shown = assets[assets["market_value"] > MIN_SHOWN]
     if shown.empty:
         st.caption("No holdings over $100 yet.")
         return
-    st.html(cards(shown))
+    if ctx is None:
+        st.html(cards(shown))
+        return
+    _grid(shown, ctx)
+
+
+@st.fragment
+def _grid(shown: pd.DataFrame, ctx: dict) -> None:
+    """The cards, each with an invisible full-card button; the open one's drawer follows it. The grid is
+    CSS (base.css): auto-fill columns with dense packing, so a full-width drawer placed right after a card
+    lands under that card's row at any width, and the cards after it fill the row back in. A fragment, so
+    opening a card reruns only this panel."""
+    from panel import drawer  # imports price_fmt from here
+
+    open_ = st.session_state.get("sw_open")
+    if open_ not in set(shown["asset"]):
+        open_ = None
+    with st.container(key="sw-holdgrid"):
+        for i, r in enumerate(shown.itertuples()):
+            with st.container(key=f"sw-slot-{i}"):
+                st.html(card(r, r.asset == open_))
+                st.button(f"{'Close' if r.asset == open_ else 'Open'} {r.asset}", key=f"sw-open-{i}",
+                          on_click=_toggle, args=(r.asset,))
+            if r.asset == open_:
+                with st.container(key="sw-drawer"):
+                    drawer.render(r, ctx)

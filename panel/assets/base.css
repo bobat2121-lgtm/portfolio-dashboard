@@ -142,10 +142,10 @@ h3::after { content: ""; display: block; width: 46px; height: 2px; margin-top: .
   border-color: var(--saber-blue) !important; color: var(--saber-blue) !important; box-shadow: 0 0 12px var(--saber-blue-soft), inset 0 0 8px var(--saber-blue-soft);
 }
 /* segmented control (tax year): plain buttons with aria-checked in 1.64 */
-.st-key-tax_year button { border-radius: 0 !important; background: rgba(4, 5, 11, .55) !important; border-color: var(--panel-line) !important; }
-.st-key-tax_year button p { font-family: var(--label) !important; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: .58rem !important; }
-.st-key-tax_year button:hover { border-color: var(--saber-blue) !important; color: var(--saber-blue) !important; }
-.st-key-tax_year button[aria-checked="true"] { background: var(--sw-yellow-faint) !important; border-color: var(--sw-yellow) !important; color: var(--sw-yellow) !important; box-shadow: inset 0 0 10px var(--sw-yellow-faint); }
+.st-key-tax_year button, [class*="st-key-sw-drawer-range"] button { border-radius: 0 !important; background: rgba(4, 5, 11, .55) !important; border-color: var(--panel-line) !important; }
+.st-key-tax_year button p, [class*="st-key-sw-drawer-range"] button p { font-family: var(--label) !important; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: .58rem !important; }
+.st-key-tax_year button:hover, [class*="st-key-sw-drawer-range"] button:hover { border-color: var(--saber-blue) !important; color: var(--saber-blue) !important; }
+.st-key-tax_year button[aria-checked="true"], [class*="st-key-sw-drawer-range"] button[aria-checked="true"] { background: var(--sw-yellow-faint) !important; border-color: var(--sw-yellow) !important; color: var(--sw-yellow) !important; box-shadow: inset 0 0 10px var(--sw-yellow-faint); }
 
 /* inputs (password) */
 [data-testid="stTextInputRootElement"], [data-baseweb="input"] { background: rgba(4, 5, 11, .8) !important; border-radius: 0 !important; border-color: var(--sw-yellow-soft) !important; }
@@ -284,3 +284,67 @@ h3::after { content: ""; display: block; width: 46px; height: 2px; margin-top: .
 .sw-cell .v.up, .sw-cell .v.down { text-shadow: 0 0 8px color-mix(in srgb, currentColor 45%, transparent); }
 .sw-cell .sw-bar { margin: .25rem 0 0; }
 .sw-hold .sw-chips { margin-top: auto; padding-top: .8rem; }
+
+/* ---------------------------------------------------------------- holdings: clickable cards, the drawer */
+/* The grid: auto-fill columns, dense packing. The drawer spans the row and sits right after the open card,
+   so it lands under that card's row at any width and the cards after it fill the row back in. */
+.st-key-sw-holdgrid { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+  grid-auto-flow: row dense; gap: .8rem !important; align-items: stretch; margin: .2rem 0 .4rem; }
+.st-key-sw-holdgrid > * { min-width: 0; width: auto !important; max-width: none !important; }
+.st-key-sw-holdgrid > *:has(.st-key-sw-drawer), .st-key-sw-holdgrid > .st-key-sw-drawer { grid-column: 1 / -1; }
+[class*="st-key-sw-slot-"] { position: relative; height: 100%; gap: 0 !important; }
+[class*="st-key-sw-slot-"] > [data-testid="stElementContainer"]:first-child { flex: 1 1 auto; }
+[class*="st-key-sw-slot-"] [data-testid="stHtml"], [class*="st-key-sw-slot-"] .sw-hold { height: 100%; }
+/* an invisible button over the whole card: click anywhere to open or close */
+[class*="st-key-sw-open-"] { position: absolute !important; inset: 0; z-index: 2; margin: 0 !important; width: auto !important; }
+[class*="st-key-sw-open-"] button { width: 100% !important; height: 100% !important; min-height: 0 !important; opacity: 0; cursor: pointer; }
+/* hover (and the open card): the same lightsaber blue as the Sync / Refresh buttons */
+.sw-hold { transition: box-shadow .15s ease; }
+[class*="st-key-sw-slot-"]:hover .sw-hold, [class*="st-key-sw-slot-"]:has(button:focus-visible) .sw-hold, .sw-hold.open {
+  box-shadow: inset 0 0 0 1px var(--saber-blue), inset 0 2px 0 0 var(--saber-blue), inset 0 0 8px var(--saber-blue-soft),
+    0 0 12px var(--saber-blue-soft); }
+
+.st-key-sw-drawer { position: relative; padding: 1.1rem 1.25rem 1.25rem !important; gap: .55rem !important; border-radius: 16px;
+  background: rgba(4, 7, 13, .84);
+  box-shadow: inset 0 0 0 1px var(--saber-blue), inset 0 2px 0 0 var(--saber-blue), 0 0 24px -8px var(--saber-blue-soft);
+  animation: sw-drawer-in .22s ease-out; }
+@keyframes sw-drawer-in { from { opacity: 0; transform: translateY(-6px) } to { opacity: 1; transform: none } }
+.st-key-sw-drawer-close { position: absolute !important; top: .6rem; right: .75rem; z-index: 3; width: auto !important; }
+.st-key-sw-drawer-close button { min-height: 0 !important; padding: .15rem .6rem !important; }
+.st-key-sw-drawer [data-testid="stElementToolbar"] { display: none !important; }   /* no chart toolbar */
+.sw-dr-head { display: flex; align-items: baseline; gap: .8rem; flex-wrap: wrap; padding-right: 3.2rem; }
+.sw-dr-head .sw-sym { font-size: 1.3rem; color: var(--sw-yellow); }
+.sw-dr-name { color: var(--ink); font-size: .85rem; }
+.sw-dr-since { margin-left: auto; color: var(--ink-dim); font-family: var(--label); font-weight: 700; font-size: .55rem;
+  letter-spacing: .14em; text-transform: uppercase; }
+.sw-dr-k { display: flex; align-items: center; gap: .7rem; margin: 1.05rem 0 .5rem; }
+.sw-dr-k b { font-family: var(--label); font-weight: 700; font-size: .62rem; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--saber-blue); white-space: nowrap; }
+.sw-dr-k i { font-style: normal; font-size: .7rem; color: var(--ink-dim); white-space: nowrap; }
+.sw-dr-k::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--saber-blue-soft), transparent); }
+.sw-dr-cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 1px; background: var(--panel-line);
+  border: 1px solid var(--panel-line); border-radius: 12px; overflow: hidden; }
+.sw-dr-cells .sw-st { padding: .5rem .8rem; }
+.sw-dr-cells .sw-st .v { font-size: 1.02rem; }
+.sw-dr-lots { max-height: 340px; overflow: auto; border: 1px solid var(--panel-line); border-radius: 12px; }
+.sw-dr-lots table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: .8rem; color: var(--ink); }
+.sw-dr-lots th { position: sticky; top: 0; z-index: 1; background: #080b12; text-align: left; padding: .5rem .65rem; white-space: nowrap;
+  font-family: var(--label); font-weight: 700; font-size: .54rem; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-dim);
+  border-bottom: 1px solid var(--panel-line); }
+.sw-dr-lots td { padding: .4rem .65rem; border-bottom: 1px solid rgba(138, 143, 152, .1); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sw-dr-lots tr:nth-child(even) td { background: rgba(255, 255, 255, .015); }
+.sw-dr-lots tbody tr:hover td { background: rgba(75, 213, 238, .06); }
+.sw-dr-lots td small { display: block; font-size: .66rem; color: var(--ink-dim); }
+.sw-dr-lots td.g small { display: inline; margin-left: .35rem; }
+.sw-dr-bar { display: block; width: 90px; height: 3px; margin-top: .25rem; background: rgba(138, 143, 152, .15); }
+.sw-dr-bar i { display: block; height: 100%; }
+.sw-dr-bar i.up { background: var(--saber-green); box-shadow: 0 0 6px var(--saber-green); }
+.sw-dr-bar i.down { background: var(--sith); box-shadow: 0 0 6px var(--sith); }
+.sw-dr-note { margin-top: .55rem; font-size: .74rem; line-height: 1.45; color: var(--ink-dim); }
+.sw-dr-note .warn { color: var(--rebel); font-family: var(--label); font-weight: 700; font-size: .6rem; letter-spacing: .1em; text-transform: uppercase; }
+.sw-dr-accts { display: flex; flex-direction: column; }
+.sw-dr-acct { display: grid; grid-template-columns: 1fr auto; gap: .25rem 1rem; padding: .5rem 0; border-bottom: 1px solid rgba(138, 143, 152, .12);
+  font-family: var(--mono); color: var(--ink); }
+.sw-dr-acct b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.sw-dr-acct .sw-bar { grid-column: 1 / -1; margin: 0; }
+@media (max-width: 640px) { .st-key-sw-drawer { padding: .9rem .8rem 1rem !important; } .sw-dr-since { margin-left: 0; } }
