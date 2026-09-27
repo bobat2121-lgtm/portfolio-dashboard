@@ -10,7 +10,7 @@ from panel import holdings as holdings_panel, theme, views
 from panel.common import betas, header, history, load, panel, portfolio_data, tax_report
 from portfolio import achievements, lenses, queries
 from portfolio.config import performance_start
-from portfolio.history import rebase, summary
+from portfolio.history import rebase, summary, ytd
 from portfolio.timeutil import today_ny, utcnow
 
 USD = st.column_config.NumberColumn(format="dollar")
@@ -42,22 +42,13 @@ def render() -> None:
     day_pct = totals["day_change"] / base if base else 0.0
     theme.set_mood(day_pct)                           # the scene leans rebel on up days, imperial on down days
 
-    c1, c2, c3, c4, c5, c6 = st.container(key="sw-metrics").columns(6)
-    c1.metric("Total", f"${totals['total']:,.2f}")
-    c2.metric("Today", f"${totals['day_change']:,.2f}", f"{day_pct:.2%}" if totals["total"] else None)
-    c3.metric("Cost basis", f"${totals['cost_basis']:,.2f}",
-              help="What you paid for the positions you hold now."
-              + (f" {totals['unknown_basis']} position(s) have no known cost and are left out."
-                 if totals["unknown_basis"] else ""))
-    c4.metric("Invested", f"${totals['invested']:,.2f}", help="What your positions are worth now (excludes cash).")
-    c5.metric("Cash", f"${totals['cash']:,.2f}")
-    c6.metric("Unrealized", f"${totals['unrealized']:,.2f}",
-              help=f"Invested minus cost basis. Cost basis known for {totals['basis_coverage']:.0%} of invested value.")
+    hist = rebase(history(holdings, cash), performance_start())
+    with st.container(key="sw-metrics"):             # total value and YTD as hero tags, six readouts beside
+        views.headline(totals, ytd(hist, today_ny()), btc_price, data["btc_open"], len(accounts))
 
     assets_tab, explore_tab, brief_tab = st.container(key="sw-body").tabs(TABS)
     with explore_tab:
         overview, themes_tab, map_tab, badges_tab, holdings_tab, activity_tab = st.container(key="sw-explore").tabs(EXPLORE)
-    hist = rebase(history(holdings, cash), performance_start())
 
     # the front page: the holdings, then panels that open on demand
     with assets_tab, panel("assets"):

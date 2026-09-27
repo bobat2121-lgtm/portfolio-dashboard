@@ -233,6 +233,43 @@ def rebase(h: History, start: date | None) -> History:
     return History(daily=nd, start=start, notes=h.notes)
 
 
+def ytd(h: History, today: date) -> dict:
+    """This year so far, from the Dec 31 close.
+
+    pct: money-weighted (Modified Dietz), the dollar gain over the average money you had in, each deposit
+    counted for the share of the year it was invested, so deposits never count as gains. twr: the
+    time-weighted figure a fund would report. btc / spy: the same money (the Dec 31 value plus each
+    deposit on its day) held in bitcoin or the S&P 500 instead, measured the same way as pct.
+    """
+    if h.empty:
+        return {}
+    d, jan1 = h.daily, date(today.year, 1, 1)
+    before, span = d[d.index < jan1], d[d.index >= jan1]
+    if span.empty:
+        return {}
+    v0 = float(before["value"].iloc[-1]) if not before.empty else 0.0
+    flows = span["flow"].astype(float)
+    n = len(span)
+    capital = v0 + float((flows * (n - 1 - np.arange(n)) / n).sum())   # a deposit counts from the end of its day
+    gain = float(span["value"].iloc[-1]) - v0 - float(flows.sum())
+    prev, growth = v0, 1.0
+    for v, f in zip(span["value"], flows):
+        if prev + f > 0:
+            growth *= v / (prev + f)
+        prev = v
+    out = {"since": span.index[0], "gain": gain, "capital": capital,
+           "pct": gain / capital if capital > 0 else None, "twr": growth - 1 if capital > 0 else None}
+    for col in ("btc", "spy"):
+        px = span.get(f"{col}_px")
+        p0 = before[f"{col}_px"].iloc[-1] if v0 and f"{col}_px" in before else None
+        if capital <= 0 or px is None or px.isna().any() or (v0 and (p0 is None or pd.isna(p0))):
+            out[col] = None
+            continue
+        units = (v0 / float(p0) if v0 else 0.0) + float((flows / px).sum())
+        out[col] = (units * float(px.iloc[-1]) - v0 - float(flows.sum())) / capital
+    return out
+
+
 def summary(h: History) -> dict:
     """Headline numbers for the comparison cards."""
     if h.empty:

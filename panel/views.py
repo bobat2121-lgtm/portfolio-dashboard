@@ -325,6 +325,66 @@ def _price(v: float) -> str:
     return price_fmt(v)
 
 
+def headline(totals: dict, ytd: dict, btc_price: float | None, btc_open: float | None, accounts: int = 0) -> None:
+    """The headline deck: two hero tags (total value, YTD return) beside six evenly spaced readouts."""
+    arrows = {"up": "▲", "down": "▼", "flat": "■"}
+
+    def move(c) -> str:
+        if c is None:
+            return '<span class="s">&nbsp;</span>'
+        return f'<span class="s {tone(c * 100)}">{arrows[tone(c * 100)]} {abs(c):.2%}</span>'
+
+    def cell(label: str, value: str, sub: str, cls: str = "", tip: str = "") -> str:
+        attr = f' title="{esc(tip)}"' if tip else ""
+        return (f'<div class="sw-st"{attr}><span class="k{" tip" if tip else ""}">{label}</span>'
+                f'<span class="v {cls}">{value}</span>{sub}</div>')
+
+    total, day_change = totals["total"], totals["day_change"]
+    base = total - day_change
+    day = day_change / base if base else None
+    whole, cents = f"{total:,.2f}".split(".")
+    in_btc = f"≈ ₿{total / btc_price:,.4f} in bitcoin" if btc_price else "&nbsp;"
+    across = f"across {accounts} account{'s' if accounts != 1 else ''}" if accounts else "&nbsp;"
+    heroes = (f'<div class="sw-herotag total" title="Everything in every account, at live prices.">'
+              f'<span class="k">Total value</span><span class="v">${whole}<small>.{cents}</small></span>'
+              f'<span class="s">{in_btc}</span><span class="s">{across}</span></div>')
+    if ytd.get("pct") is None:
+        heroes += ('<div class="sw-herotag ytd flat"><span class="k">YTD return</span><span class="v">—</span>'
+                   '<span class="s">fills in once there is history</span><span class="s">&nbsp;</span></div>')
+    else:
+        r, gain = ytd["pct"], ytd["gain"]
+        vs = " · ".join(f"{name} {pct(ytd[k], True)}" for k, name in (("btc", "BTC"), ("spy", "S&P"))
+                        if ytd.get(k) is not None)
+        tip = (f"Since Dec 31: {usd(gain, signed=True)} on about {usd(ytd['capital'])} you had in, on average. "
+               "Money-weighted: each deposit counts only from the day it arrived, and never as a gain. "
+               + (f"Time-weighted, the way a fund reports it: {pct(ytd['twr'], True)}. " if ytd.get("twr") is not None else "")
+               + "BTC and S&P: the same money held in bitcoin or the S&P 500 instead.")
+        heroes += (f'<div class="sw-herotag ytd {tone(r * 100)}" title="{esc(tip)}"><span class="k">YTD return</span>'
+                   f'<span class="v">{pct(r, True)}</span>'
+                   f'<span class="s"><b class="{tone(gain)}">{usd(gain, signed=True)}</b> this year</span>'
+                   f'<span class="s">{"<i>vs </i>" + esc(vs) if vs else "&nbsp;"}</span></div>')
+
+    cost, unreal = totals["cost_basis"], totals["unrealized"]
+    unknown = totals["unknown_basis"]
+    cells = [
+        cell("Bitcoin", _price(btc_price) if btc_price else "—",
+             move(btc_price / btc_open - 1 if btc_price and btc_open else None)),
+        cell("Today", usd(day_change, signed=True), move(day), tone(day_change)),
+        cell("Unrealized", usd(unreal, signed=True),
+             f'<span class="s {tone(unreal)}">{pct(unreal / cost, True)} on cost</span>' if cost else move(None),
+             tone(unreal), f"Invested minus cost basis. Cost basis known for {totals['basis_coverage']:.0%} of invested value."),
+        cell("Invested", usd(totals["invested"]), '<span class="s">in positions</span>',
+             tip="What your positions are worth now (excludes cash)."),
+        cell("Cash", usd(totals["cash"]), f'<span class="s">{totals["cash"] / total:.1%} of total</span>' if total else move(None)),
+        cell("Cost basis", usd(cost),
+             f'<span class="s">{unknown} without cost</span>' if unknown else '<span class="s">what you paid</span>',
+             tip="What you paid for the positions you hold now."
+             + (f" {unknown} position(s) have no known cost and are left out." if unknown else "")),
+    ]
+    st.html(f'<div class="sw-deck"><div class="sw-heroes">{heroes}</div>'
+            f'<div class="sw-stats6">{"".join(cells)}</div></div>')
+
+
 def ticker(assets: pd.DataFrame, btc_price: float | None, btc_open: float | None, watch=()) -> None:
     """BTC, your holdings over $100, then the watchlist (config: ticker.watch), each shown once."""
     items = []

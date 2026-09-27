@@ -126,3 +126,21 @@ def test_rebase_starts_money_in_at_that_days_value():
     assert s["net_in"] == pytest.approx(1000 + 200)            # worth $1,000 the day before (500 cash + 10 x $50), then $200
     assert s["btc"] == pytest.approx(1000 / 150 * 300 + 200 / 150 * 300)
     assert history.rebase(full, None) is full
+
+
+def test_ytd_is_money_weighted_and_compares_the_same_money():
+    days = pd.date_range("2025-12-30", "2026-01-10", freq="D").date
+    d = pd.DataFrame(index=pd.Index(days, name="date"))
+    d["value"] = [900.0, 1000.0] + [2000.0] * 9 + [2200.0]       # Dec 31: 1000; Jan 1: +1000 deposited; ends 2200
+    d["flow"] = [0.0, 0.0, 1000.0] + [0.0] * 9
+    d["net_in"] = d["flow"].cumsum()
+    d["btc_px"] = 50.0                                           # bitcoin flat
+    d["spy_px"] = [100.0] * 11 + [200.0]                         # the S&P doubles on the last day
+    h = history.History(daily=d)
+    y = history.ytd(h, date(2026, 1, 10))
+    n = 10                                                       # Jan 1 .. Jan 10
+    capital = 1000 + 1000 * (n - 1) / n                          # the deposit was in 9 of 10 days
+    assert y["gain"] == pytest.approx(200) and y["capital"] == pytest.approx(capital)
+    assert y["pct"] == pytest.approx(200 / capital) and y["twr"] == pytest.approx(0.10)
+    assert y["btc"] == pytest.approx(0.0) and y["spy"] == pytest.approx(2000 / capital)
+    assert history.ytd(history.History(daily=d.iloc[:0]), date(2026, 1, 10)) == {}

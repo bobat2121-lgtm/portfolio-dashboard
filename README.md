@@ -99,6 +99,10 @@ API page, Neon role password), create a new one, and update `.env` and the GitHu
 
 ## Ways to view it
 
+Under the title, two hero tags: **Total value** (and what it is in bitcoin) and **YTD return** since Dec 31,
+money-weighted so deposits never count as gains, next to the same money held in bitcoin or the S&P 500 (hover it
+for the time-weighted figure). Beside them, six readouts: Bitcoin, Today, Unrealized, Invested, Cash, Cost basis.
+
 Two pages (top left): **Dashboard** and **Taxes**. A ticker scrolls across the top: BTC, your holdings over
 $100, then a watchlist (SPCX, QQQ, SPY, TSLA, ETH, BMNR, STRC, SATA, ZEC, RUT) set in
 [config/portfolio.yaml](config/portfolio.yaml) under `ticker.watch`.

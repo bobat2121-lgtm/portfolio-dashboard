@@ -1,12 +1,7 @@
 /* MIX: the header, headline numbers and tabs float on space (melded); the data sits in solid, slightly
    frosted panels (distinct). */
-.st-key-sw-header h1, .st-key-sw-metrics [data-testid="stMetricValue"], .st-key-sw-metrics [data-testid="stMetricLabel"],
-[data-testid="stTab"] {
+.st-key-sw-header h1, [data-testid="stTab"] {
   text-shadow: 0 0 3px #000, 0 0 12px rgba(0, 0, 0, .95);
-}
-.st-key-sw-metrics [data-testid="stMetric"] {
-  padding: .35rem 0 .55rem .8rem; border-left: 2px solid var(--sw-yellow-soft);
-  background: linear-gradient(90deg, rgba(4, 5, 11, .55), transparent 85%);
 }
 .st-key-sw-body [role="tablist"] { border-bottom-color: var(--sw-yellow-faint); }
 [class*="st-key-sw-panel"], [data-testid="stForm"] {

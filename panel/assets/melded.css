@@ -6,7 +6,6 @@
 h1, h2, h3, p, [data-testid="stMetricValue"], [data-testid="stMetricLabel"], [data-testid="stTab"] {
   text-shadow: 0 0 3px #000, 0 0 10px rgba(0, 0, 0, .9);
 }
-.st-key-sw-metrics [data-testid="stMetric"] { padding: .4rem 0 .6rem; border-bottom: 1px solid var(--sw-yellow-faint); }
 .st-key-sw-body [role="tablist"] { border-bottom-color: var(--sw-yellow-faint); }
 /* black table and chart backgrounds drop out, so the scene shows behind the numbers */
 [data-testid="stDataFrame"], [data-testid="stVegaLiteChart"], [data-testid="stArrowVegaLiteChart"] { mix-blend-mode: screen; }

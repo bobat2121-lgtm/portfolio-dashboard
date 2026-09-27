@@ -11,6 +11,11 @@ from tests.test_sync import FakeSource, fidelity, kraken, mstr, run, spaxx
 APP = str(Path(__file__).resolve().parent.parent / "streamlit_app.py")
 
 
+def deck(at) -> str:
+    """The headline deck's HTML ("" while the dashboard is locked or empty)."""
+    return " ".join(str(e.proto) for e in at.get("html") if 'class=\\"sw-deck\\"' in str(e.proto))
+
+
 @pytest.fixture(autouse=True)
 def fresh_cache():
     st.cache_data.clear()  # the app's loaders are cached per process; each test has its own DB
@@ -30,8 +35,9 @@ def test_dashboard_renders_with_data(tmp_db, monkeypatch):
     run(FakeSource("snaptrade", lambda: fidelity([mstr(12), spaxx()], cash=0)), FakeSource("kraken", kraken, derive=True))
     at = AppTest.from_file(APP, default_timeout=30).run()
     assert not at.exception, at.exception
-    labels = [mt.label for mt in at.metric]
-    assert labels == ["Total", "Today", "Cost basis", "Invested", "Cash", "Unrealized"]
+    html = deck(at)
+    for label in ("Total value", "YTD return", "Bitcoin", "Today", "Unrealized", "Invested", "Cash", "Cost basis"):
+        assert f">{label}<" in html, label
     from panel.dashboard import EXPLORE, TABS
     assert [t.label for t in at.tabs] == TABS[:2] + EXPLORE + TABS[2:]  # Explore's sub-tabs sit inside it
     assert [e.label for e in at.expander][:2] == [at.expander[0].label, "What if bitcoin hits…"]
@@ -42,13 +48,13 @@ def test_password_gate_blocks_until_correct(tmp_db, monkeypatch):
     run(FakeSource("kraken", kraken, derive=True))
     monkeypatch.setattr(prices, "get_quotes", lambda wanted: ({}, []))
     at = AppTest.from_file(APP, default_timeout=30).run()
-    assert not at.metric
+    assert not deck(at)
     at.text_input[0].input("nope")
     at.button[0].click().run()
-    assert at.error and not at.metric
+    assert at.error and not deck(at)
     at.text_input[0].input("a-long-enough-test-password")
     at.button[0].click().run()
-    assert not at.exception and at.metric
+    assert not at.exception and deck(at)
 
 
 def test_real_database_without_strong_password_stays_locked(tmp_db, monkeypatch):
@@ -61,7 +67,7 @@ def test_real_database_without_strong_password_stays_locked(tmp_db, monkeypatch)
         else:
             monkeypatch.delenv("APP_PASSWORD", raising=False)
         at = AppTest.from_file(APP, default_timeout=30).run()
-        assert "Locked" in at.error[0].value and not at.metric and not at.text_input
+        assert "Locked" in at.error[0].value and not deck(at) and not at.text_input
 
 
 def test_cloud_app_without_broker_keys_has_no_in_app_sync(tmp_db, monkeypatch):
