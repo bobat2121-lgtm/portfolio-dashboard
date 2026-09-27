@@ -174,7 +174,7 @@ def briefing(story: dict) -> None:
     st.html(
         f'<div class="sw-crawl-stage" data-run="{n}">'
         '<div class="sw-crawl-intro">A short time ago in a brokerage far,<br>far away....</div>'
-        '<div class="sw-crawl-logo">portfolio</div>'
+        '<div class="sw-crawl-logo">btc supernova</div>'
         f'<div class="sw-crawl-view"><div class="sw-crawl"><div class="ep">{esc(story["episode"])}</div>'
         f'<h2>{esc(story["title"])}</h2>{paras}</div></div></div>')
     left, _ = st.columns([1, 3])

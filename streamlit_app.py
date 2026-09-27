@@ -1,4 +1,4 @@
-"""Portfolio dashboard: your accounts over a pixel-art galaxy (see panel/theme.py for the look).
+"""BTC Supernova: your accounts over a pixel-art galaxy (see panel/theme.py for the look).
 
     streamlit run streamlit_app.py              # your data
     streamlit run streamlit_app.py -- --demo    # made-up data from `python -m jobs.demo`
@@ -18,7 +18,7 @@ from panel.common import boot, gate
 if "--demo" in sys.argv:
     os.environ["DEMO"] = "1"
 
-st.set_page_config(page_title="Portfolio", layout="wide")
+st.set_page_config(page_title="BTC Supernova", layout="wide")
 boot()
 theme.apply(theme.current_style())  # the scene shows on the lock screen too; it carries no data
 gate()

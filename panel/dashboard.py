@@ -16,7 +16,7 @@ from portfolio.timeutil import today_ny, utcnow
 USD = st.column_config.NumberColumn(format="dollar")
 PCT = st.column_config.NumberColumn(format="percent")
 QTY = st.column_config.NumberColumn(format="%.6g")
-TABS = ["Assets", "Explore", "Briefing", "Sync"]
+TABS = ["Assets", "Explore", "Briefing"]  # syncing lives in the header
 EXPLORE = ["Accounts", "Themes", "Star map", "Achievements", "Positions", "Activity"]  # sub-tabs of Explore
 
 
@@ -28,13 +28,13 @@ def render() -> None:
     assets, themes, btc_price = data["assets"], data["themes"], data["btc_price"]
 
     views.ticker(assets, btc_price, data["btc_open"])
-    header("Portfolio")
+    header("BTC Supernova")
     if accounts.empty:
         st.info("No data yet. It appears after the first sync (GitHub Actions, or `python -m jobs.sync` locally).")
         return
     last_sync = accounts["last_synced_at"].max()
     if pd.notna(last_sync) and utcnow() - last_sync.to_pydatetime() > timedelta(hours=6):
-        st.warning(f"Last successful sync was {last_sync:%b %d %H:%M} UTC. Check the Sync tab.")
+        st.warning(f"Last successful sync was {last_sync:%b %d %H:%M} UTC. Try Sync now at the top.")
     for err in data["quote_errors"]:
         st.caption(f"Live prices partly unavailable, using broker prices: {err}")
 
@@ -54,7 +54,7 @@ def render() -> None:
     c6.metric("Unrealized", f"${totals['unrealized']:,.2f}",
               help=f"Invested minus cost basis. Cost basis known for {totals['basis_coverage']:.0%} of invested value.")
 
-    assets_tab, explore_tab, brief_tab, sync_tab = st.container(key="sw-body").tabs(TABS)
+    assets_tab, explore_tab, brief_tab = st.container(key="sw-body").tabs(TABS)
     with explore_tab:
         overview, themes_tab, map_tab, badges_tab, holdings_tab, activity_tab = st.container(key="sw-explore").tabs(EXPLORE)
     hist = rebase(history(holdings, cash), performance_start())
@@ -165,18 +165,3 @@ def render() -> None:
             st.caption("No deposits or withdrawals recorded yet.")
         else:
             st.bar_chart(contrib, x="month", y="amount", color="account")
-
-    with sync_tab, panel("sync-accounts"):
-        st.subheader("Accounts")
-        st.dataframe(accounts[["key", "label", "source", "mapped", "number_mask", "data_as_of", "last_synced_at",
-                               "broker_total", "total", "unpriced", "last_error"]],
-                     hide_index=True, width="stretch", column_config={"broker_total": USD, "total": USD})
-        if not accounts["mapped"].astype(bool).all():
-            st.info("Some accounts aren't in config/portfolio.yaml. They're tracked, but add them there to name them.")
-    with sync_tab, panel("runs"):
-        st.subheader("Recent runs")
-        runs = load("sync_runs")
-        st.dataframe(runs.drop(columns=["summary"]), hide_index=True, width="stretch")
-        if not runs.empty:
-            with st.expander("Last run details"):
-                st.json(runs.iloc[0]["summary"])

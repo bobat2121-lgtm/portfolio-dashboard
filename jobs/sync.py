@@ -8,7 +8,7 @@
 
 On GitHub Actions (or with --redact) the output carries no dollar amounts, symbols, account names or
 error text, because Actions logs can be read by anyone who can see the repo. The full summary of every
-run is kept in the database and shown on the dashboard's Sync tab, behind the password.
+run is kept in the database (sync_runs); `python -m jobs.sync` locally prints the same run in full.
 """
 from __future__ import annotations
 
@@ -41,15 +41,15 @@ def report_redacted(res: dict) -> None:
         detail = detail or (_kind(v.get("error")) if v["status"] == "error" else "")
         print(f"  source {name}: {v['status']} {detail}".rstrip())
         if v["status"] == "error":
-            _gh("error", f"{name} failed ({_kind(v.get('error'))}). Details on the dashboard's Sync tab.")
+            _gh("error", f"{name} failed ({_kind(v.get('error'))}). Run python -m jobs.sync locally for details.")
     for key, v in res["accounts"].items():
         name = "an account not in config" if v.get("unmapped") else key  # auto keys end in account digits
         print(f"  {name}: {v['status']}")
         if v["status"] in ("error", "suspect"):
-            _gh("warning", f"{name}: {v['status']}. Details on the dashboard's Sync tab.")
+            _gh("warning", f"{name}: {v['status']}. Run python -m jobs.sync locally for details.")
     notes = len(res["warnings"]) + sum(len(v.get("warnings", [])) + bool(v.get("reconcile")) for v in res["accounts"].values())
     if notes:
-        _gh("notice", f"{notes} note(s) from this run. See the dashboard's Sync tab.")
+        _gh("notice", f"{notes} note(s) from this run. Run python -m jobs.sync locally for details.")
 
 
 def report_full(res: dict, dry_run: bool) -> None:

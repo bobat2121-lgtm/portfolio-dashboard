@@ -1,6 +1,6 @@
-# Portfolio Dashboard
+# BTC Supernova
 
-One view of Fidelity (taxable), Robinhood (taxable + IRA) and Kraken. A scheduled job pulls every
+A portfolio dashboard: one view of Fidelity (taxable), Robinhood (taxable + IRA) and Kraken. A scheduled job pulls every
 account into Postgres, so buys, sells and deposits show up without you doing anything. It keeps a
 permanent history of holdings, values and transactions.
 
@@ -106,7 +106,6 @@ Two pages (top left): **Dashboard** and **Taxes**. A ticker of your holdings scr
 | **Assets** (opens first) | every holding worth over $100, all accounts combined (BTC on Kraken + Robinhood = one BTC, MSTR in taxable + IRA = one MSTR, all cash = one Cash), each with a bold live price ($84,400 / $158.6 / $29.44), as cards, with a switcher to trial four card variations: **Big price** (the price is the headline), **Trend** (30-day pixel sparkline), **Cost** (average cost to price, paid/gain bar) and **Holo** (ring gauge of portfolio share). Below, two panels that open on demand: **Performance** (you vs the same deposits in BTC and in the S&P 500, and value vs money in; its title carries the headline) and **What if bitcoin hits…** (slide BTC's price; each holding moves by its measured beta) |
 | **Explore** | sub-tabs: **Accounts** (by account, asset class, taxable/IRA), **Themes** (Bitcoin-linked share, price in BTC), **Star map**, **Achievements** (16 badges from your history), **Positions**, **Activity** |
 | **Briefing** | a Star Wars opening crawl written from today's numbers |
-| **Sync** | sync health and recent runs |
 
 **Taxes page:** realized short- and long-term gains by year (taxable accounts), dividends and interest, a rough tax
 estimate at your rates, lots turning long-term soon, loss-harvest candidates with wash-sale windows, every sale with a
