@@ -50,27 +50,7 @@ def esc(s) -> str:
     return html.escape(str(s))
 
 
-# ---------------------------------------------------------------- 1. by asset (the main tab)
-
-def assets_view(assets: pd.DataFrame) -> None:
-    if assets.empty:
-        st.caption("No holdings yet.")
-        return
-    shown = assets[assets["market_value"] > MIN_SHOWN]
-    cards = []
-    for r in shown.itertuples():
-        pnl = "" if pd.isna(r.unrealized) or r.asset == lenses.CASH_ASSET else (
-            f'<span class="{tone(r.unrealized)}">{usd(r.unrealized, signed=True)} ({pct(r.unrealized_pct, True)})</span>')
-        day = f'<span class="{tone(r.day_change)}">{usd(r.day_change, signed=True)} today</span>' if abs(r.day_change) >= 0.5 else ""
-        chips = "".join(f"<span>{esc(a)}</span>" for a in r.accounts)
-        cards.append(
-            f'<div class="sw-card"><div class="sw-card-top"><span class="sw-sym">{esc(r.asset)}</span>'
-            f'<span class="sw-weight">{pct(r.weight)}</span></div>'
-            f'<div class="sw-name">{esc(r.name or r.asset_class)}</div>'
-            f'<div class="sw-value">{usd(r.market_value)}</div>'
-            f'<div class="sw-bar"><i style="width:{max(1.5, r.weight * 100):.1f}%"></i></div>'
-            f'<div class="sw-row">{pnl}{day}</div><div class="sw-chips">{chips}</div></div>')
-    st.html(f'<div class="sw-cards">{"".join(cards)}</div>')
+# (the front page's holdings panel lives in panel/holdings.py)
 
 
 # ---------------------------------------------------------------- 2. by theme
@@ -231,7 +211,7 @@ def performance(hist) -> None:
     d["date"] = pd.to_datetime(d["date"])
     since = s["since"].strftime("%b %d, %Y") if s.get("since") else "the start"
     gain_pct = s["gain"] / s["net_in"] if s["net_in"] > 0 else None
-    stats = [("Money in (net)", usd(s["net_in"]), f"deposits minus withdrawals since {since}"),
+    stats = [("Money in (net)", usd(s["net_in"]), f"its value on {since}, plus deposits minus withdrawals since"),
              ("Your gain", usd(s["gain"], signed=True), f"{pct(gain_pct, True)} on money in" if gain_pct is not None else "")]
     for key, name in (("btc", "Same money in bitcoin"), ("spy", "Same money in S&P 500")):
         if s.get(key) is not None:
@@ -339,6 +319,12 @@ def achievements_view(badges: list[dict]) -> None:
 
 # ---------------------------------------------------------------- ticker
 
+def _price(v: float) -> str:
+    from panel.holdings import price_fmt
+
+    return price_fmt(v)
+
+
 def ticker(assets: pd.DataFrame, btc_price: float | None, btc_open: float | None) -> None:
     items = []
     if btc_price:
@@ -352,7 +338,7 @@ def ticker(assets: pd.DataFrame, btc_price: float | None, btc_open: float | None
         return
     arrows = {"up": "▲", "down": "▼", "flat": "■"}
     cells = "".join(
-        f'<span class="t"><b>{esc(n)}</b> {usd(p)} '
+        f'<span class="t"><b>{esc(n)}</b> {_price(p)} '
         + (f'<i class="{tone(c * 100)}">{arrows[tone(c * 100)]} {abs(c):.2%}</i>' if c is not None else "")
         + "</span>" for n, p, c in items)
     secs = max(24, 6 * len(items))

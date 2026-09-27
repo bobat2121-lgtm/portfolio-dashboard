@@ -107,3 +107,22 @@ def test_achievements_read_the_history():
     assert badges["2X"]["earned"] and badges["BB"]["earned"] and not badges["SP"]["earned"]
     assert badges["MX"]["earned"] and not badges["10"]["earned"] and badges["10"]["progress"] == pytest.approx(2 / 9)
     assert len(badges) == 16
+
+
+def test_rebase_starts_money_in_at_that_days_value():
+    t = pd.DataFrame([txn(1, "rh", D0, "deposit", amount=1000.0),
+                      txn(2, "rh", D0 + timedelta(days=1), "buy", "XYZ", 10, 50.0, -500.0, 500.0),
+                      txn(3, "rh", D0 + timedelta(days=7), "deposit", amount=200.0)])
+    pos = positions([["rh", "XYZ", 10, 60.0, 1.0, "equity", False, 600.0]])
+    cash = pd.DataFrame([["rh", "USD", 700.0]], columns=["account_key", "currency", "amount"])
+    prices = pd.DataFrame(closes("XYZ", D0, [50.0] * 5 + [55.0] * 5 + [60.0])
+                          + closes("BTC-USD", D0, [100.0] * 5 + [150.0] * 5 + [300.0])
+                          + closes("SPY", D0, [100.0] * 11))
+    full = history.build(t, pos, cash, accounts(), prices, pd.DataFrame(columns=["symbol", "date", "ratio"]), TODAY)
+    start = D0 + timedelta(days=5)
+    r = history.rebase(full, start)
+    s = history.summary(r)
+    assert r.daily.index[0] == start and s["since"] == start
+    assert s["net_in"] == pytest.approx(1000 + 200)            # worth $1,000 the day before (500 cash + 10 x $50), then $200
+    assert s["btc"] == pytest.approx(1000 / 150 * 300 + 200 / 150 * 300)
+    assert history.rebase(full, None) is full

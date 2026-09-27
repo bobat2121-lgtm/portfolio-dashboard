@@ -58,7 +58,8 @@ TAG_LIKE = re.compile(r"<[/\w!]")
 
 
 def current_style() -> str:
-    s = st.session_state.get("sw_style") or st.query_params.get("style") or DEFAULT_STYLE
+    """Mix, unless the URL asks for another (?style=distinct|melded); there's no on-page switcher."""
+    s = st.query_params.get("style") or DEFAULT_STYLE
     s = str(s).lower()
     return s if s in STYLES else DEFAULT_STYLE
 
@@ -98,19 +99,3 @@ def set_mood(day_pct: float) -> None:
     mood = max(-1.0, min(1.0, float(day_pct) / 0.02))
     st.html(f'<div class="space-mood"></div><script>window.__space && window.__space.setMood({mood:.3f})</script>',
             unsafe_allow_javascript=True)
-
-
-def _picked() -> None:
-    choice = st.session_state.get("sw_style")
-    if not choice:  # clicking the selected option again clears it; keep the current look instead
-        st.session_state["sw_style"] = current_style()
-    else:
-        st.query_params["style"] = choice
-
-
-def style_picker() -> None:
-    """Segmented control for the three looks; remembered in the URL (?style=)."""
-    if not st.session_state.get("sw_style"):
-        st.session_state["sw_style"] = current_style()
-    st.segmented_control("Panels", list(STYLES), format_func=STYLES.get, key="sw_style", on_change=_picked,
-                         label_visibility="collapsed")

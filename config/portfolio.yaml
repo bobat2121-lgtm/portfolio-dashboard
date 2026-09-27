@@ -61,6 +61,11 @@ sources:
     min_minutes_between_syncs: 1
     overlap_days: 3
 
+performance:
+  # Where the Performance timeline starts. The portfolio's value that day counts as money in, and the
+  # BTC / S&P 500 comparisons are replayed from there. Remove it to use all the history SnapTrade has.
+  start: 2025-06-30
+
 app:
   # The cloud dashboard holds no broker keys, so its Sync button opens this workflow to run it on GitHub.
   sync_workflow_url: "https://github.com/bobat2121-lgtm/portfolio-dashboard/actions/workflows/sync.yml"

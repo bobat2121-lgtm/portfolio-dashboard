@@ -103,7 +103,7 @@ Two pages (top left): **Dashboard** and **Taxes**. A ticker of your holdings scr
 
 | Dashboard tab | What it shows |
 |---|---|
-| **Assets** (opens first) | every holding worth over $100, all accounts combined (BTC on Kraken + Robinhood = one BTC, MSTR in taxable + IRA = one MSTR, all cash = one Cash), as cards. Below, two panels that open on demand: **Performance** (you vs the same deposits in BTC and in the S&P 500, and value vs money in; its title carries the headline) and **What if bitcoin hits…** (slide BTC's price; each holding moves by its measured beta) |
+| **Assets** (opens first) | every holding worth over $100, all accounts combined (BTC on Kraken + Robinhood = one BTC, MSTR in taxable + IRA = one MSTR, all cash = one Cash), each with a bold live price ($84,400 / $158.6 / $29.44), in four trial formats: **Cards**, **Manifest** (rows with 30-day pixel sparklines), **Territory** (treemap lit by today's move), **Hero** (largest holding big, 60-day sparkline). Below, two panels that open on demand: **Performance** (you vs the same deposits in BTC and in the S&P 500, and value vs money in; its title carries the headline) and **What if bitcoin hits…** (slide BTC's price; each holding moves by its measured beta) |
 | **Explore** | sub-tabs: **Accounts** (by account, asset class, taxable/IRA), **Themes** (Bitcoin-linked share, price in BTC), **Star map**, **Achievements** (16 badges from your history), **Positions**, **Activity** |
 | **Briefing** | a Star Wars opening crawl written from today's numbers |
 | **Sync** | sync health and recent runs |
@@ -113,6 +113,11 @@ estimate at your rates, lots turning long-term soon, loss-harvest candidates wit
 wash-sale flag, and all open lots. First-in-first-out lots rebuilt from your transactions, stock splits applied. Set
 your rates in the `PORTFOLIO_CONFIG` secret: `taxes: {short_term_rate: 0.24, long_term_rate: 0.15, state_rate: 0.05}`.
 An estimate; your 1099 is the record.
+
+**Performance starts June 30, 2025** (`performance.start` in `config/portfolio.yaml`): the portfolio's value that
+day counts as money in, and the BTC / S&P comparisons are replayed from there. Money in isn't the same as cost basis:
+cost basis is only what you paid for what you still hold; money in also covers your cash, money lost (or made) on
+things you've sold, fees and dividends.
 
 **How history is rebuilt:** each account's holdings and cash are walked backwards from today through its transactions,
 and each day is valued with daily closes the sync job stores in `price_history` (split-adjusted; old quantities are
@@ -132,9 +137,8 @@ asteroid, pulsar, a fighter jumping to hyperspace, or the Death Star charging it
 events (roughly every 6 hours of viewing) a black hole opens, pulls everything in, swallows the dashboard and leaves
 the tab black until you reload.
 
-- **Three panel styles** from the switcher at the top right (remembered in the URL as `?style=`):
-  `distinct` (solid panels, space in the gaps), `melded` (no panels, space behind everything) and `mix`
-  (floating header and numbers, solid data panels).
+- **Panel style:** `mix` (floating header and numbers, solid data panels). The other two are still in the
+  code: add `?style=distinct` (solid panels) or `?style=melded` (no panels) to the URL to see them.
 - **Try an event now:** add `?space=supernova` to the URL (or `meteor_shower`, `comet`, `asteroid`, `pulsar`,
   `hyperspace`, `superlaser`, `rebel_attack`, `shooting_star`, `blackhole`). From the browser console:
   `__space.trigger("comet")`.

@@ -148,7 +148,6 @@ def betas(assets_min):
 
 def header(title: str) -> None:
     """Title, the panel-style switcher and the sync buttons; shows the result of an in-app sync."""
-    from panel import theme
     from portfolio import sync
     from portfolio.config import section
 
@@ -156,7 +155,6 @@ def header(title: str) -> None:
     left, right = box.columns([3, 2], vertical_alignment="center")
     left.title(title)
     with right:
-        theme.style_picker()
         b1, b2 = st.columns(2)
         with b1:
             if can_sync_here():

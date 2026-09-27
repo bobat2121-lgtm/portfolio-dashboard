@@ -177,11 +177,29 @@ def build(txns: pd.DataFrame, positions: pd.DataFrame, cash: pd.DataFrame, accou
     for col, sym in (("btc", "BTC-USD"), ("spy", "SPY:tr" if "SPY:tr" in closes else "SPY")):
         if sym in closes:
             px = series(closes[sym]).iloc[1:]
+            daily[f"{col}_px"] = px
             daily[col] = (daily["flow"] / px).cumsum() * px
         else:
             daily[col] = np.nan
             notes.append(f"No {BENCHMARKS.get(sym.split(':')[0], sym)} prices yet; they fill in after the next sync.")
     return History(daily=daily, start=start, notes=notes)
+
+
+def rebase(h: History, start: date | None) -> History:
+    """Start the timeline at `start`: what the portfolio was worth the day before counts as money in on
+    that day, and the BTC / S&P comparisons are replayed from there."""
+    d = h.daily
+    if h.empty or start is None or start <= d.index[0] or start > d.index[-1]:
+        return h
+    before = d[d.index < start]
+    opening = float(before["value"].iloc[-1]) if not before.empty else 0.0
+    nd = d[d.index >= start].copy()
+    nd.loc[nd.index[0], "flow"] += opening
+    nd["net_in"] = nd["flow"].cumsum()
+    for col in ("btc", "spy"):
+        if f"{col}_px" in nd and nd[f"{col}_px"].notna().all():
+            nd[col] = (nd["flow"] / nd[f"{col}_px"]).cumsum() * nd[f"{col}_px"]
+    return History(daily=nd, start=start, notes=h.notes)
 
 
 def summary(h: History) -> dict:

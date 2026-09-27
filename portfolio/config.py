@@ -59,3 +59,11 @@ def source_settings(name: str) -> dict:
 
 def pricing() -> dict:
     return section("pricing")
+
+
+def performance_start():
+    """First day of the Performance timeline (config: performance.start), or None for all history."""
+    from datetime import date
+
+    v = section("performance").get("start")
+    return v if isinstance(v, date) or v is None else date.fromisoformat(str(v))

@@ -6,10 +6,11 @@ from datetime import timedelta
 import pandas as pd
 import streamlit as st
 
-from panel import theme, views
+from panel import holdings as holdings_panel, theme, views
 from panel.common import betas, header, history, load, panel, portfolio_data, tax_report
 from portfolio import achievements, lenses, queries
-from portfolio.history import summary
+from portfolio.config import performance_start
+from portfolio.history import rebase, summary
 from portfolio.timeutil import today_ny, utcnow
 
 USD = st.column_config.NumberColumn(format="dollar")
@@ -56,12 +57,11 @@ def render() -> None:
     assets_tab, explore_tab, brief_tab, sync_tab = st.container(key="sw-body").tabs(TABS)
     with explore_tab:
         overview, themes_tab, map_tab, badges_tab, holdings_tab, activity_tab = st.container(key="sw-explore").tabs(EXPLORE)
-    hist = history(holdings, cash)
+    hist = rebase(history(holdings, cash), performance_start())
 
     # the front page: the holdings, then panels that open on demand
     with assets_tab, panel("assets"):
-        st.subheader("Every holding, all accounts combined")
-        views.assets_view(assets)
+        holdings_panel.render(assets, load("price_history"))
     with assets_tab, panel("performance"):
         with st.expander(views.performance_label(hist), expanded=False):
             views.performance(hist)

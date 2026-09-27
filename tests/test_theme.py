@@ -34,3 +34,20 @@ def test_all_styles_load_together_scoped_to_the_page_attribute():
         scoped = theme.scope(theme._read(f"{style}.css"), style)
         rules = [r for r in scoped.splitlines() if r.strip()]
         assert rules and all(r.startswith(f'html[data-space-style="{style}"]') for r in rules)
+
+
+def test_prices_round_the_way_the_cards_show_them():
+    from panel.holdings import price_fmt
+    assert price_fmt(158.61) == "$158.6" and price_fmt(84523.4) == "$84,523" and price_fmt(29.444) == "$29.44"
+    assert price_fmt(0.7861) == "$0.786" and price_fmt(None) == "—"
+
+
+def test_treemap_tiles_fill_the_panel_in_proportion():
+    from panel.holdings import squarify
+    vals = [23760, 13877, 2392, 1165]
+    rects = squarify(vals, 240, 100)
+    areas = [w * h for _, _, w, h in rects]
+    assert sum(areas) == pytest.approx(24000)
+    for a, v in zip(areas, vals):
+        assert a / 24000 == pytest.approx(v / sum(vals))
+    assert all(x >= -1e-9 and y >= -1e-9 and x + w <= 240 + 1e-6 and y + h <= 100 + 1e-6 for x, y, w, h in rects)
