@@ -70,3 +70,30 @@ pricing:
   cash_symbols: [SPAXX, FDRXX, FZFXX, SPRXX, FZDXX, SPSXX, CORE, FCASH]
   # Grouped separately from other crypto; priced from Kraken, $1 if Kraken has no USD pair.
   stablecoins: [USDC, USDT, DAI, PYUSD, USDG, USD1, RLUSD, FDUSD, TUSD, USDS, USDE]
+
+# Themes for the Themes, Star map and Briefing views. First match wins: a holding matches by symbol,
+# then by asset class. Options follow their underlying (an ASST call counts as a Bitcoin treasury).
+# bitcoin_linked themes add up to the "Bitcoin-linked" share.
+themes:
+  - name: Bitcoin
+    color: "#F7931A"
+    bitcoin_linked: true
+    symbols: [BTC, IBIT, FBTC, GBTC, BTC.MINI, BITB, ARKB, HODL, BRRR, BTCO, EZBC, BTCW]
+  - name: Bitcoin treasuries
+    color: "#FFE81F"
+    bitcoin_linked: true
+    symbols: [MSTR, ASST, SMLR, MTPLF, NAKA, MARA, RIOT, CLSK, CEP, XXI, KULR, DJT, BTCS, HUT, CORZ]
+  - name: Digital credit
+    color: "#4BD5EE"
+    bitcoin_linked: true
+    symbols: [STRC, STRK, STRF, STRD, STRE, SATA]
+  - name: Crypto
+    color: "#B388FF"
+    symbols: [COIN, HOOD, BMNR, SBET, ETHA, ETHE, BITO, HSDT, GLXY, CRCL]
+    asset_classes: [crypto]
+  - name: Stocks & funds
+    color: "#39FF14"
+    asset_classes: [equity, etf, fund, bond, other]
+  - name: Cash & stablecoins
+    color: "#8A8F98"
+    asset_classes: [cash, stablecoin]

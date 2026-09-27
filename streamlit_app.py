@@ -12,7 +12,7 @@ from datetime import timedelta
 import pandas as pd
 import streamlit as st
 
-from panel import theme
+from panel import theme, views
 from panel.common import boot, can_sync_here, gate, live_quotes, load
 
 if "--demo" in sys.argv:
@@ -23,9 +23,9 @@ boot()
 theme.apply(theme.current_style())  # the scene shows on the lock screen too; it carries no data
 gate()
 
-from portfolio import queries, sync  # noqa: E402  (after boot: secrets must be in env first)
+from portfolio import lenses, queries, sync  # noqa: E402  (after boot: secrets must be in env first)
 from portfolio.config import section  # noqa: E402
-from portfolio.timeutil import utcnow  # noqa: E402
+from portfolio.timeutil import today_ny, utcnow  # noqa: E402
 
 USD = st.column_config.NumberColumn(format="dollar")
 PCT = st.column_config.NumberColumn(format="percent")
@@ -46,10 +46,14 @@ try:
 except Exception:  # noqa: BLE001 - e.g. read-only login before the first sync has created the tables
     st.info("The database isn't ready yet. It fills in after the first sync runs.")
     st.stop()
-wanted = frozenset(queries.wanted_quotes(stored)) if not stored.empty else frozenset()
-quotes, quote_errors = live_quotes(wanted) if wanted else ({}, [])
+BTC_QUOTE = ("kraken", "BTC")  # always fetched: the Themes view can price everything in bitcoin
+wanted = frozenset((queries.wanted_quotes(stored) if not stored.empty else set()) | {BTC_QUOTE})
+quotes, quote_errors = live_quotes(wanted)
 holdings = queries.reprice(stored, quotes) if not stored.empty else stored
 totals = queries.totals(holdings, cash) if not accounts.empty else None
+btc_price = quotes[BTC_QUOTE].price if BTC_QUOTE in quotes else None
+assets = lenses.with_themes(lenses.combine_assets(holdings, cash))
+themes = lenses.by_theme(assets)
 
 # ---------------------------------------------------------------- header
 
@@ -104,8 +108,9 @@ c5.metric("Cash", f"${totals['cash']:,.2f}")
 c6.metric("Unrealized", f"${totals['unrealized']:,.2f}",
           help=f"Invested minus cost basis. Cost basis known for {totals['basis_coverage']:.0%} of invested value.")
 
-overview, holdings_tab, activity_tab, sync_tab = st.container(key="sw-body").tabs(
-    ["Overview", "Holdings", "Activity", "Sync"])
+(overview, assets_tab, themes_tab, map_tab, brief_tab, holdings_tab, activity_tab,
+ sync_tab) = st.container(key="sw-body").tabs(
+    ["Accounts", "Assets", "Themes", "Star map", "Briefing", "Positions", "Activity", "Sync"])
 
 # ---------------------------------------------------------------- overview
 
@@ -136,6 +141,26 @@ with overview, panel("history"):
     else:
         wide = hist.pivot_table(index="as_of", columns="account_key", values="value", aggfunc="sum").fillna(0)
         st.area_chart(wide)
+
+# ---------------------------------------------------------------- four more ways to see it
+
+with assets_tab, panel("assets"):
+    st.subheader("Every holding, all accounts combined")
+    views.assets_view(assets)
+
+with themes_tab, panel("themes"):
+    st.subheader("By theme")
+    views.themes_view(assets, themes, btc_price)
+
+with map_tab, panel("star-map"):
+    st.subheader("Star map")
+    views.star_map(assets, themes, totals["total"])
+
+with brief_tab, panel("briefing"):
+    hist_days = load("value_history")
+    first_day = lenses.as_date(hist_days["as_of"].min()) if not hist_days.empty else None
+    live_accounts = [a.label for a in accounts.itertuples() if (a.total or 0) >= 1]
+    views.briefing(lenses.crawl(totals, assets, live_accounts, first_day, today_ny()))
 
 # ---------------------------------------------------------------- holdings
 
