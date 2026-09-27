@@ -159,5 +159,6 @@ def test_live_reprice_in_the_app(tmp_db, monkeypatch):
     t = queries.totals(h, queries.cash())
     assert t["total"] == 3200 + 500 and t["day_change"] == 200
     assert t["unrealized"] == 3200 - 2500
+    assert t["cost_basis"] == 2500 and t["invested"] == 3200 and t["unknown_basis"] == 0
     alloc = queries.allocation(h, queries.cash())
     assert set(alloc["asset_class"]) == {"equity", "cash"}

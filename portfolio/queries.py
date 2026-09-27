@@ -90,14 +90,18 @@ def totals(h: pd.DataFrame, c: pd.DataFrame) -> dict:
     cash_positions = counted[counted["asset_class"] == m.CASH]["market_value"].sum() if not h.empty else 0.0
     invested = counted[counted["asset_class"] != m.CASH]["market_value"].sum() if not h.empty else 0.0
     usd_cash = c[c["currency"] == "USD"]["amount"].sum() if not c.empty else 0.0
-    with_basis = counted[counted["cost_basis"].notna()] if not h.empty else h
+    positions = counted[counted["asset_class"] != m.CASH] if not h.empty else h
+    with_basis = positions[positions["cost_basis"].notna()] if not h.empty else h
     return {
         "total": float(invested + cash_positions + usd_cash),
         "invested": float(invested),
+        "cost_basis": float(with_basis["cost_basis"].sum()) if not with_basis.empty else 0.0,  # what you paid
         "cash": float(cash_positions + usd_cash),
         "day_change": float(counted["day_change"].sum()) if not h.empty else 0.0,
         "unrealized": float(with_basis["unrealized"].sum()) if not with_basis.empty else 0.0,
         "basis_coverage": float(with_basis["market_value"].sum() / invested) if invested else 1.0,
+        "unknown_basis": int((positions["cost_basis"].isna() & (positions["market_value"].abs() >= 1)).sum())
+        if not h.empty else 0,
     }
 
 
