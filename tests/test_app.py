@@ -38,6 +38,7 @@ def test_dashboard_renders_with_data(tmp_db, monkeypatch):
     html = deck(at)
     for label in ("Total value", "YTD return", "Bitcoin", "Today", "Unrealized", "Invested", "Cash", "Cost basis"):
         assert f">{label}<" in html, label
+    assert html.count("of total<") == 2                            # Invested and Cash both show their share
     from panel.dashboard import EXPLORE, TABS
     assert [t.label for t in at.tabs] == TABS[:2] + EXPLORE + TABS[2:]  # Explore's sub-tabs sit inside it
     assert [e.label for e in at.expander][:2] == [at.expander[0].label, "What if bitcoin hits…"]
