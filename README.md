@@ -103,7 +103,7 @@ Two pages (top left): **Dashboard** and **Taxes**. A ticker of your holdings scr
 
 | Dashboard tab | What it shows |
 |---|---|
-| **Assets** (opens first) | every holding worth over $100, all accounts combined (BTC on Kraken + Robinhood = one BTC, MSTR in taxable + IRA = one MSTR, all cash = one Cash), each with a bold live price ($84,400 / $158.6 / $29.44), as cards, with a switcher to trial four card variations: **Big price** (the price is the headline), **Trend** (30-day pixel sparkline), **Cost** (average cost to price, paid/gain bar) and **Holo** (ring gauge of portfolio share). Below, two panels that open on demand: **Performance** (you vs the same deposits in BTC and in the S&P 500, and value vs money in; its title carries the headline) and **What if bitcoin hits…** (slide BTC's price; each holding moves by its measured beta) |
+| **Assets** (opens first) | every holding worth over $100, all accounts combined (BTC on Kraken + Robinhood = one BTC, MSTR in taxable + IRA = one MSTR, all cash = one Cash), as cards: the value up top, then price ($84,400 / $158.6 / $29.44), today's move, gain on cost and share of the portfolio. Below, two panels that open on demand: **Performance** (you vs the same deposits in BTC and in the S&P 500, and value vs money in; its title carries the headline) and **What if bitcoin hits…** (slide BTC's price; each holding moves by its measured beta) |
 | **Explore** | sub-tabs: **Accounts** (by account, asset class, taxable/IRA), **Themes** (Bitcoin-linked share, price in BTC), **Star map**, **Achievements** (16 badges from your history), **Positions**, **Activity** |
 | **Briefing** | a Star Wars opening crawl written from today's numbers |
 

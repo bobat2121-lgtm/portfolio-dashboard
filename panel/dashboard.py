@@ -61,7 +61,7 @@ def render() -> None:
 
     # the front page: the holdings, then panels that open on demand
     with assets_tab, panel("assets"):
-        holdings_panel.render(assets, load("price_history"))
+        holdings_panel.render(assets)
     with assets_tab, panel("performance"):
         with st.expander(views.performance_label(hist), expanded=False):
             views.performance(hist)

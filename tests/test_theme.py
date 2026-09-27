@@ -42,21 +42,33 @@ def test_prices_round_the_way_the_cards_show_them():
     assert price_fmt(0.7861) == "$0.786" and price_fmt(None) == "—"
 
 
-def test_every_card_variation_renders_with_prices():
+def test_holding_cards_show_value_price_today_gain_and_share():
     import pandas as pd
     from panel import holdings as H
     shown = pd.DataFrame([
         {"asset": "MSTR", "symbol": "MSTR", "asset_class": "equity", "name": "Strategy", "quantity": 150.0, "price": 158.61,
          "market_value": 23760.0, "day_change": -449.0, "cost_basis": 18053.0, "unrealized": 5707.0,
          "unrealized_pct": 0.316, "weight": 0.577, "accounts": ["Robinhood IRA", "Robinhood Taxable"]},
-        {"asset": "Cash", "symbol": "Cash", "asset_class": "cash", "name": "Cash", "quantity": 2392.0, "price": 1.0,
-         "market_value": 2392.0, "day_change": 0.0, "cost_basis": 2392.0, "unrealized": 0.0, "unrealized_pct": 0.0,
-         "weight": 0.058, "accounts": ["Fidelity Taxable"]},
+        {"asset": "VTI", "symbol": "VTI", "asset_class": "equity", "name": "VTI", "quantity": 10.0, "price": 300.0,
+         "market_value": 3000.0, "day_change": 0.0, "cost_basis": float("nan"), "unrealized": float("nan"),
+         "unrealized_pct": float("nan"), "weight": 0.07, "accounts": ["Fidelity Taxable"]},
+        {"asset": "Cash", "symbol": "Cash", "asset_class": "cash", "name": "Cash and money-market funds", "quantity": 2392.0,
+         "price": 1.0, "market_value": 2392.0, "day_change": 0.0, "cost_basis": 2392.0, "unrealized": 0.0,
+         "unrealized_pct": 0.0, "weight": 0.058, "accounts": ["Fidelity Taxable"]},
+        {"asset": "ASST $35 call Jan '28", "symbol": "ASST280121C00035000", "asset_class": "option", "name": "",
+         "underlying": "ASST", "quantity": 1.0, "price": 11.65, "market_value": 1165.0, "day_change": 20.0,
+         "cost_basis": 900.0, "unrealized": 265.0, "unrealized_pct": 0.294, "weight": 0.028, "accounts": ["Robinhood Taxable"]},
     ])
-    spark = {"MSTR": [150.0, 152.0, 149.0, 158.61, 158.0]}
-    assert set(H.FORMATS) == set(H.RENDER) and "Manifest" not in H.FORMATS and len(H.FORMATS) == 5
-    for name, (fn, _days) in H.RENDER.items():
-        html = fn(shown, spark)
-        assert "MSTR" in html and "Cash" in html, name
-        assert "$158.6" in html, name
-    assert "avg $120.4" in H.cost(shown, {}) and "30 days" in H.trend(shown, spark)
+    html = H.cards(shown)
+    assert not hasattr(H, "FORMATS") and not hasattr(H, "RENDER")  # one format now: cards
+    mstr, vti, cash, call = html.split('class="sw-card sw-hold"')[1:]
+    for text in ("$23,760", "$158.6", "−$449", "▼ 1.85%", "+$5,707", "+31.6%", "57.7%", "Strategy", "Robinhood IRA"):
+        assert text in mstr, text
+    assert ">Stock<" in vti and "no cost basis" in vti   # a name that only repeats the symbol gives way to the kind
+    from types import SimpleNamespace
+    names = {n: H._title(SimpleNamespace(asset="X", asset_class="equity", name=n))[1] for n in
+             ("Strive, Inc. Class A Common Stock", "Strategy Inc.", "Coinbase Global, Inc. - Class A Common Stock", "Apple Inc")}
+    assert names == {"Strive, Inc. Class A Common Stock": "Strive", "Strategy Inc.": "Strategy",
+                     "Coinbase Global, Inc. - Class A Common Stock": "Coinbase Global", "Apple Inc": "Apple"}
+    assert '<span class="sw-sym">ASST</span>' in call and "$35 call Jan &#x27;28" in call and "$11.65" in call
+    assert "Price" not in cash and "Share" in cash and "$2,392" in cash
