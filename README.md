@@ -99,14 +99,32 @@ API page, Neon role password), create a new one, and update `.env` and the GitHu
 
 ## Ways to view it
 
-| Tab | What it shows |
+Two pages (top left): **Dashboard** and **Taxes**. A ticker of your holdings scrolls across the top.
+
+| Dashboard tab | What it shows |
 |---|---|
-| **Accounts** | value by account, allocation by asset class and by taxable/IRA, value over time |
-| **Assets** (opens first) | every holding with all accounts combined (BTC on Kraken + Robinhood = one BTC, MSTR in taxable + IRA = one MSTR, all cash = one Cash), as cards |
-| **Themes** | holdings grouped by theme (Bitcoin, Bitcoin treasuries, digital credit, crypto, stocks & funds, cash), your Bitcoin-linked share, and a switch to price everything in BTC. Edit the themes in `config/portfolio.yaml`; options follow their underlying |
-| **Star map** | the portfolio as a star system: each theme an orbit, each holding a planet sized by value, a green/red halo for gain/loss, a moon for each extra account holding it |
-| **Briefing** | a Star Wars opening crawl written from today's numbers: the episode is the day count since your first sync, the title follows the day's move |
-| **Positions / Activity / Sync** | raw positions per account, detected changes + transactions + contributions, sync health |
+| **Assets** (opens first) | every holding with all accounts combined (BTC on Kraken + Robinhood = one BTC, MSTR in taxable + IRA = one MSTR, all cash = one Cash) as cards, then **Performance**: you vs the same deposits in BTC and in the S&P 500 (SPY, dividends reinvested), and value vs money in |
+| **Accounts** | value by account, allocation by asset class and by taxable/IRA |
+| **Themes** | holdings by theme (edit in `config/portfolio.yaml`), Bitcoin-linked share, optional pricing in BTC |
+| **Star map** | each theme an orbit, each holding a planet sized by value, gain/loss halo, a moon per extra account |
+| **Briefing** | a Star Wars opening crawl written from today's numbers |
+| **What if** | slide bitcoin's price; each holding moves by its measured beta to BTC (options re-priced from their stock) |
+| **Achievements** | 16 badges earned from your real history, with progress on the locked ones |
+| **Positions / Activity / Sync** | raw positions, detected changes + transactions + contributions, sync health |
+
+**Taxes page:** realized short- and long-term gains by year (taxable accounts), dividends and interest, a rough tax
+estimate at your rates, lots turning long-term soon, loss-harvest candidates with wash-sale windows, every sale with a
+wash-sale flag, and all open lots. First-in-first-out lots rebuilt from your transactions, stock splits applied. Set
+your rates in the `PORTFOLIO_CONFIG` secret: `taxes: {short_term_rate: 0.24, long_term_rate: 0.15, state_rate: 0.05}`.
+An estimate; your 1099 is the record.
+
+**How history is rebuilt:** each account's holdings and cash are walked backwards from today through its transactions,
+and each day is valued with daily closes the sync job stores in `price_history` (split-adjusted; old quantities are
+adjusted with `splits`, since brokers don't always report splits; ASST's 1-for-20 in Feb 2026 is one). Options and
+delisted tickers use their own trade prices. `python -m jobs.prices` backfills by hand.
+
+**The scene reacts to your day:** on up days the rebels attack the Death Star more often and fighters jump to
+hyperspace; on down days it charges its superlaser.
 
 ## The look
 
@@ -122,7 +140,7 @@ the tab black until you reload.
   `distinct` (solid panels, space in the gaps), `melded` (no panels, space behind everything) and `mix`
   (floating header and numbers, solid data panels).
 - **Try an event now:** add `?space=supernova` to the URL (or `meteor_shower`, `comet`, `asteroid`, `pulsar`,
-  `hyperspace`, `superlaser`, `shooting_star`, `blackhole`). From the browser console:
+  `hyperspace`, `superlaser`, `rebel_attack`, `shooting_star`, `blackhole`). From the browser console:
   `__space.trigger("comet")`.
 - People who set their OS to *reduce motion* get the scene without the random events.
 - Type: **Star Jedi** by Boba Fonts (freeware) for titles, kept as its original, intact zip in
@@ -141,6 +159,7 @@ the tab black until you reload.
 | `python -m jobs.sync --force` | skip the min-gap and empty-holdings guard |
 | `python -m jobs.link [--portal]` | check connections and account mapping / get a connect link |
 | `python -m jobs.readonly_login` | create or rotate the dashboard's read-only DB login |
+| `python -m jobs.prices` | backfill daily price and split history (the sync does this too) |
 | `python -m jobs.push_secrets [--dry-run]` | copy the sync job's secrets from `.env` to GitHub Actions (values never printed) |
 | `python -m jobs.demo` | made-up data in `data/demo.db` for UI work, then `streamlit run streamlit_app.py -- --demo` |
 | `python -m pytest` | tests (no network) |

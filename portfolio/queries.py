@@ -171,3 +171,26 @@ def sync_runs(limit: int = 30) -> pd.DataFrame:
                    db.SyncRun.status, db.SyncRun.summary)
             .order_by(db.SyncRun.id.desc()).limit(limit))
     return _df(stmt)
+
+
+def all_transactions() -> pd.DataFrame:
+    """Every transaction with what the history, tax and achievement views need."""
+    stmt = (select(db.Transaction.account_key, db.Account.label.label("account"), db.Account.tax,
+                   db.Transaction.trade_date, db.Transaction.occurred_at, db.Transaction.type, db.Transaction.symbol,
+                   db.Transaction.quantity, db.Transaction.price, db.Transaction.amount, db.Transaction.value_usd,
+                   db.Transaction.fee, db.Transaction.id)
+            .join(db.Account, db.Account.key == db.Transaction.account_key)
+            .order_by(db.Transaction.trade_date, db.Transaction.id))
+    return _df(stmt)
+
+
+def price_history() -> pd.DataFrame:
+    return _df(select(db.PriceHistory.symbol, db.PriceHistory.date, db.PriceHistory.close, db.PriceHistory.adj_close))
+
+
+def splits() -> pd.DataFrame:
+    return _df(select(db.Split.symbol, db.Split.date, db.Split.ratio))
+
+
+def account_rows() -> pd.DataFrame:
+    return _df(select(db.Account.key, db.Account.label, db.Account.source, db.Account.raw_type, db.Account.tax))

@@ -345,6 +345,15 @@ def run(trigger: str = "cli", only: str | None = None, refresh: bool = False, dr
                 res["unmapped"] = True
             summary["accounts"][key] = res
 
+        if not dry_run and any(v["status"] == "ok" for v in summary["sources"].values()):
+            try:  # daily closes + splits for the history, taxes and what-if views
+                from portfolio import pricehist
+
+                summary["prices"] = pricehist.update(s)
+            except Exception as e:  # noqa: BLE001 - prices are a nice-to-have; the sync itself succeeded
+                s.rollback()
+                summary["warnings"].append(f"price history: {type(e).__name__}: {e}")
+
         for name, v in summary["sources"].items():
             if v["status"] == "ok" and not v["accounts"]:
                 summary["warnings"].append(f"{name} returned no accounts. Connect a broker first (python -m jobs.link).")

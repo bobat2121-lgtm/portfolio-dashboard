@@ -700,16 +700,59 @@
       return tt < 6;
     } };
   }
+  // X-wings strafe the Death Star: red bolts, small explosions on its surface.
+  function rebelAttack() {
+    const shooters = fleet.filter((sh) => !sh.hidden && sh.fighter);
+    if (!shooters.length) return null;
+    const bolts = [], booms = [], RED = hex("#ff3b30"), HOT = hex("#ffb199"), FIRE = ramp("#7a1c05", "#e8560f", "#ffb347", "#fff1c9");
+    const dur = rnd(2.5, 4);
+    let tt = 0, next = 0;
+    return { layer: "near", draw(ctx, dt, now) {
+      tt += dt;
+      while (tt < dur && tt >= next) {
+        const sh = shooters[(Math.random() * shooters.length) | 0], [x, y] = shipPos(sh, now);
+        const sx = x - sh.sp.w / 2, sy = y + (Math.random() < 0.5 ? -1 : 1) * sh.sp.h * 0.45;
+        const tx = ds.x + rnd(-0.55, 0.55) * ds.r, ty = ds.y + rnd(-0.55, 0.55) * ds.r;
+        const d = Math.hypot(tx - sx, ty - sy) || 1;
+        bolts.push({ x: sx, y: sy, ux: (tx - sx) / d, uy: (ty - sy) / d, tx, ty, left: d });
+        next += rnd(0.1, 0.3);
+      }
+      for (let i = bolts.length - 1; i >= 0; i--) {
+        const b = bolts[i], step = 260 * dt;
+        b.x += b.ux * step; b.y += b.uy * step; b.left -= step;
+        if (b.left <= 0) { booms.push({ x: b.tx, y: b.ty, t: 0 }); bolts.splice(i, 1); continue; }
+        for (let k = 0; k < 5; k++) { ctx.fillStyle = rgba(k ? RED : HOT, 1 - k * 0.18); ctx.fillRect(Math.round(b.x - b.ux * k), Math.round(b.y - b.uy * k), 1, 1); }
+      }
+      for (let i = booms.length - 1; i >= 0; i--) {
+        const bm = booms[i]; bm.t += dt;
+        const k = bm.t / 0.6, r = 1 + k * 4 * S;
+        for (let a = 0; a < 10; a++) {
+          const ang = a * 0.63 + bm.t * 3;
+          ctx.fillStyle = rgba(pick(FIRE, 1 - k, a, i), 1 - k);
+          ctx.fillRect(Math.round(bm.x + Math.cos(ang) * r), Math.round(bm.y + Math.sin(ang) * r), 1, 1);
+        }
+        if (k < 0.4) { ctx.fillStyle = rgba(WHITE, 1 - k * 2); ctx.fillRect(Math.round(bm.x), Math.round(bm.y), 1, 1); }
+        if (bm.t > 0.6) booms.splice(i, 1);
+      }
+      return tt < dur || bolts.length > 0 || booms.length > 0;
+    } };
+  }
+  // The day's move tilts the odds (set from the dashboard): rebels press the attack on up days, the
+  // Death Star charges on down days. mood runs -1 (down 2%+) to +1 (up 2%+).
+  let mood = 0;
+  const up = () => Math.max(0, mood), down = () => Math.max(0, -mood);
   const EVENTS = {
+    rebel_attack: [() => 5 + 16 * up(), rebelAttack],
     shooting_star: [24, () => shootingStar({ big: Math.random() < 0.3 })],
     meteor_shower: [14, meteorShower],
     supernova: [12, supernova],
     comet: [12, comet],
     asteroid: [10, asteroid],
     pulsar: [8, pulsar],
-    hyperspace: [12, hyperspace],
-    superlaser: [5, superlaser],
+    hyperspace: [() => 12 + 6 * up(), hyperspace],
+    superlaser: [() => 4 + 16 * down(), superlaser],
   };
+  const weight = (k) => (typeof EVENTS[k][0] === "function" ? EVENTS[k][0]() : EVENTS[k][0]);
   function start(name) {
     if (consumed || BH) return;
     if (name === "blackhole") return startBlackHole();
@@ -717,9 +760,9 @@
     const ev = e[1](); if (ev) events.push(ev);
   }
   function pickEvent() {
-    let total = 0; for (const k in EVENTS) total += EVENTS[k][0];
+    let total = 0; for (const k in EVENTS) total += weight(k);
     let r = Math.random() * total;
-    for (const k in EVENTS) { r -= EVENTS[k][0]; if (r <= 0) return k; }
+    for (const k in EVENTS) { r -= weight(k); if (r <= 0) return k; }
     return "shooting_star";
   }
   function schedule() {
@@ -890,7 +933,8 @@
     document.documentElement.setAttribute("data-space-style", cfg.style);
     if (cfg.force && !forced[cfg.force]) { forced[cfg.force] = true; setTimeout(() => start(cfg.force), 1500); }
   }
-  const api = { alive: true, consumed: false, configure, trigger: start, events: Object.keys(EVENTS).concat("blackhole") };
+  const setMood = (m) => { mood = clamp(Number(m) || 0, -1, 1); };
+  const api = { alive: true, consumed: false, configure, setMood, trigger: start, events: Object.keys(EVENTS).concat("blackhole") };
   window.__space = api;
 
   layout();

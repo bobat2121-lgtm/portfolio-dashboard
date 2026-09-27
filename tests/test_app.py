@@ -32,7 +32,8 @@ def test_dashboard_renders_with_data(tmp_db, monkeypatch):
     assert not at.exception, at.exception
     labels = [mt.label for mt in at.metric]
     assert labels == ["Total", "Today", "Cost basis", "Invested", "Cash", "Unrealized"]
-    assert [t.label for t in at.tabs] == ["Assets", "Accounts", "Themes", "Star map", "Briefing", "Positions", "Activity", "Sync"]
+    from panel.dashboard import TABS
+    assert [t.label for t in at.tabs] == TABS
 
 
 def test_password_gate_blocks_until_correct(tmp_db, monkeypatch):

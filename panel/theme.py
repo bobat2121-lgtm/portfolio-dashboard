@@ -24,7 +24,7 @@ ASSETS = Path(__file__).resolve().parent / "assets"
 STYLES = {"distinct": "Distinct", "melded": "Melded", "mix": "Mix"}
 DEFAULT_STYLE = "mix"
 EVENTS = {"shooting_star", "meteor_shower", "supernova", "comet", "asteroid", "pulsar", "hyperspace", "superlaser",
-          "blackhole"}
+          "rebel_attack", "blackhole"}
 BLACK_HOLE_ODDS = 1 / 300  # per random event; events come every 20 s - 2 min, so roughly once in 6 hours
 
 
@@ -91,6 +91,13 @@ def apply(style: str) -> None:
            "minGap": 20, "maxGap": 120}
     js = _read("space.js").replace("__SPACE_CFG__", json.dumps(cfg))
     st.html(f'<div id="space-boot"></div><script>{js}</script>', unsafe_allow_javascript=True)
+
+
+def set_mood(day_pct: float) -> None:
+    """Tell the scene how the day is going: -1 (down 2%+) .. +1 (up 2%+)."""
+    mood = max(-1.0, min(1.0, float(day_pct) / 0.02))
+    st.html(f'<div class="space-mood"></div><script>window.__space && window.__space.setMood({mood:.3f})</script>',
+            unsafe_allow_javascript=True)
 
 
 def _picked() -> None:

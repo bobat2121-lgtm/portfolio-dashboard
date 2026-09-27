@@ -202,3 +202,145 @@ def briefing(story: dict) -> None:
         st.rerun()
     with st.expander("Read the briefing"):
         st.markdown(f"**{story['episode']}: {story['title']}**\n\n" + "\n\n".join(story["paragraphs"]))
+
+
+# ---------------------------------------------------------------- performance: you vs BTC vs S&P, value vs money in
+
+def performance(hist) -> None:
+    from portfolio.history import summary
+
+    if hist is None or hist.empty or len(hist.daily) < 2:
+        st.caption("Performance appears once there's transaction history and the first price backfill has run.")
+        return
+    s = summary(hist)
+    d = hist.daily.reset_index()
+    d["date"] = pd.to_datetime(d["date"])
+    since = s["since"].strftime("%b %d, %Y") if s.get("since") else "the start"
+    gain_pct = s["gain"] / s["net_in"] if s["net_in"] > 0 else None
+    stats = [("Money in (net)", usd(s["net_in"]), f"deposits minus withdrawals since {since}"),
+             ("Your gain", usd(s["gain"], signed=True), f"{pct(gain_pct, True)} on money in" if gain_pct is not None else "")]
+    for key, name in (("btc", "Same money in bitcoin"), ("spy", "Same money in S&P 500")):
+        if s.get(key) is not None:
+            ahead = s["value"] - s[key]
+            stats.append((name, usd(s[key]), f"you're {usd(abs(ahead))} {'ahead' if ahead >= 0 else 'behind'}"))
+    st.html('<div class="sw-stats">' + "".join(
+        f'<div class="sw-stat"><div class="k">{k}</div><div class="v">{v}</div><div class="s">{esc(x)}</div></div>'
+        for k, v, x in stats) + "</div>")
+
+    st.subheader("You vs Bitcoin vs the market")  # Star Jedi has no "&"
+    long = d.melt(id_vars="date", value_vars=["value", "btc", "spy"], var_name="series", value_name="usd").dropna()
+    names = ["You", "Same money in BTC", "Same money in S&P 500"]
+    long["series"] = long["series"].map(dict(zip(["value", "btc", "spy"], names)))
+    lines = alt.Chart(long).mark_line(strokeWidth=2).encode(
+        x=alt.X("date:T", title=None), y=alt.Y("usd:Q", title=None, axis=alt.Axis(format="$,.0f")),
+        color=alt.Color("series:N", scale=alt.Scale(domain=names, range=[YELLOW, "#F7931A", "#4BD5EE"]),
+                        legend=alt.Legend(orient="bottom", title=None)),
+        strokeDash=alt.StrokeDash("series:N", scale=alt.Scale(domain=names, range=[[1, 0], [5, 3], [5, 3]]), legend=None),
+        tooltip=[alt.Tooltip("date:T", title="Date"), alt.Tooltip("series:N", title="Line"),
+                 alt.Tooltip("usd:Q", title="Value", format="$,.0f")],
+    ).properties(height=320)
+    st.altair_chart(lines, width="stretch")
+    st.caption("The same deposits, on the same days, put into BTC or an S&P 500 fund (SPY, dividends reinvested) instead.")
+
+    st.subheader("Value vs money in")
+    base = alt.Chart(d).encode(x=alt.X("date:T", title=None))
+    money_in = base.mark_area(opacity=0.35, color=FLAT, interpolate="step-after").encode(
+        y=alt.Y("net_in:Q", title=None, axis=alt.Axis(format="$,.0f")),
+        tooltip=[alt.Tooltip("date:T", title="Date"), alt.Tooltip("net_in:Q", title="Money in", format="$,.0f"),
+                 alt.Tooltip("value:Q", title="Value", format="$,.0f")])
+    value = base.mark_line(color=YELLOW, strokeWidth=2).encode(y="value:Q")
+    st.altair_chart(alt.layer(money_in, value).properties(height=260), width="stretch")
+    st.caption("Grey is what you've put in; yellow is what it's worth. The gap is your gain. Rebuilt from your "
+               "transactions and daily closes." + (" " + " ".join(hist.notes) if hist.notes else ""))
+
+
+# ---------------------------------------------------------------- what if BTC hits $X
+
+def whatif_view(assets: pd.DataFrame, b: dict, btc_now: float | None) -> None:
+    from portfolio import whatif
+
+    if not btc_now or assets.empty:
+        st.caption("Needs a live bitcoin price and your holdings.")
+        return
+    choices = whatif.price_choices(btc_now)
+    start = min(choices, key=lambda p: abs(p - btc_now))
+    target = st.select_slider("Bitcoin price", options=choices, value=start, format_func=lambda p: f"${p:,.0f}",
+                              key="whatif_btc")
+    proj = whatif.project(assets, b, btc_now, target)
+    now, then = proj["now"].sum(), proj["then"].sum()
+    move = f'<span class="{tone(then - now)}">{usd(then - now, signed=True)} ({pct(then / now - 1 if now else 0, True)})</span>'
+    stats = [("Bitcoin", usd(target), f"{pct(target / btc_now - 1, True)} from {usd(btc_now)}"),
+             ("Your portfolio", usd(then), move)]
+    st.html('<div class="sw-stats">' + "".join(
+        f'<div class="sw-stat"><div class="k">{k}</div><div class="v">{v}</div><div class="s">{x}</div></div>'
+        for k, v, x in stats) + "</div>")
+    cards = []
+    for r in proj[proj["now"] >= 1].sort_values("then", ascending=False).itertuples():
+        info = b.get(r.asset, {})
+        if r.beta is None:
+            tag = "follows its stock"
+        elif info.get("source") == "measured":
+            tag = f"moves {r.beta:.2f}x BTC"
+        else:
+            tag = f"{r.beta:.2f}x, {info.get('source', '')}"
+        cards.append(f'<div class="sw-card"><div class="sw-card-top"><span class="sw-sym">{esc(r.asset)}</span>'
+                     f'<span class="sw-weight">{esc(tag)}</span></div><div class="sw-value">{usd(r.then)}</div>'
+                     f'<div class="sw-row"><span class="flat">now {usd(r.now)}</span>'
+                     f'<span class="{tone(r.change)}">{usd(r.change, signed=True)}</span></div></div>')
+    st.html(f'<div class="sw-cards">{"".join(cards)}</div>')
+
+    lo, hi = min(choices), max(choices)
+    c = whatif.curve(assets, b, btc_now, lo, hi)
+    xs = alt.Scale(type="log", domain=[lo, hi])
+    line = alt.Chart(c).mark_line(color=YELLOW, strokeWidth=2).encode(
+        x=alt.X("btc:Q", scale=xs, title="Bitcoin price", axis=alt.Axis(format="$,.0s")),
+        y=alt.Y("total:Q", title=None, axis=alt.Axis(format="$,.0f")),
+        tooltip=[alt.Tooltip("btc:Q", title="BTC", format="$,.0f"), alt.Tooltip("total:Q", title="Portfolio", format="$,.0f")])
+    marks = pd.DataFrame([{"btc": btc_now, "total": now, "what": "today"}, {"btc": target, "total": then, "what": "what if"}])
+    pts = alt.Chart(marks).mark_point(filled=True, size=90).encode(
+        x=alt.X("btc:Q", scale=xs), y="total:Q",
+        color=alt.Color("what:N", scale=alt.Scale(domain=["today", "what if"], range=[INK, YELLOW]), legend=None),
+        tooltip=[alt.Tooltip("what:N", title=""), alt.Tooltip("btc:Q", title="BTC", format="$,.0f"),
+                 alt.Tooltip("total:Q", title="Portfolio", format="$,.0f")])
+    st.altair_chart(alt.layer(line, pts).properties(height=280), width="stretch")
+    st.caption("Each holding moves with bitcoin by its beta: how much it has moved per 1% BTC move over the past "
+               "year of daily closes. Options are valued at what they'd be worth on the new stock price plus "
+               "today's time value. A rough guide, not a forecast.")
+
+
+# ---------------------------------------------------------------- achievements
+
+def achievements_view(badges: list[dict]) -> None:
+    earned = sum(b["earned"] for b in badges)
+    cells = []
+    for b in badges:
+        cls = "sw-badge on" if b["earned"] else "sw-badge"
+        bar = "" if b["earned"] else f'<div class="sw-bar"><i style="width:{max(2, b["progress"] * 100):.0f}%"></i></div>'
+        cells.append(f'<div class="{cls}"><div class="ins">{esc(b["code"])}</div><div class="txt">'
+                     f'<div class="n">{esc(b["name"])}</div><div class="d">{esc(b["desc"])}</div>'
+                     f'<div class="x">{esc(b["detail"])}</div>{bar}</div></div>')
+    st.html(f'<div class="sw-stats"><div class="sw-stat"><div class="k">Earned</div><div class="v">{earned} of {len(badges)}</div>'
+            f'<div class="s">badges from your real history</div></div></div><div class="sw-badges">{"".join(cells)}</div>')
+
+
+# ---------------------------------------------------------------- ticker
+
+def ticker(assets: pd.DataFrame, btc_price: float | None, btc_open: float | None) -> None:
+    items = []
+    if btc_price:
+        items.append(("BTC", btc_price, (btc_price / btc_open - 1) if btc_open else None))
+    for r in assets.itertuples():
+        if r.asset == lenses.CASH_ASSET or r.market_value < 1 or r.price is None or pd.isna(r.price):
+            continue
+        prev_value = r.market_value - r.day_change
+        items.append((r.asset, float(r.price), (r.day_change / prev_value) if prev_value else None))
+    if not items:
+        return
+    arrows = {"up": "▲", "down": "▼", "flat": "■"}
+    cells = "".join(
+        f'<span class="t"><b>{esc(n)}</b> {usd(p)} '
+        + (f'<i class="{tone(c * 100)}">{arrows[tone(c * 100)]} {abs(c):.2%}</i>' if c is not None else "")
+        + "</span>" for n, p, c in items)
+    secs = max(24, 6 * len(items))
+    st.html(f'<div class="sw-ticker"><div class="sw-ticker-track" style="animation-duration:{secs}s">'
+            f"{cells}{cells}</div></div>")

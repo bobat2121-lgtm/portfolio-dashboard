@@ -164,6 +164,26 @@ class Quote(Base):
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class PriceHistory(Base):
+    """Daily closes from Yahoo for everything you've held, plus the benchmarks (BTC-USD, SPY).
+    `close` is split-adjusted; `adj_close` is also dividend-adjusted (a total-return series)."""
+    __tablename__ = "price_history"
+    symbol: Mapped[str] = mapped_column(String(32), primary_key=True)  # Yahoo symbol: MSTR, BTC-USD, BRK-B
+    date: Mapped[date] = mapped_column(Date, primary_key=True)
+    close: Mapped[float] = mapped_column(Float)
+    adj_close: Mapped[float | None] = mapped_column(Float, nullable=True)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Split(Base):
+    """Stock splits (ratio = new shares per old share: 0.05 is a 1-for-20 reverse split). Brokers don't
+    always report them as transactions, so history and tax lots adjust old quantities with these."""
+    __tablename__ = "splits"
+    symbol: Mapped[str] = mapped_column(String(32), primary_key=True)
+    date: Mapped[date] = mapped_column(Date, primary_key=True)
+    ratio: Mapped[float] = mapped_column(Float)
+
+
 class SyncRun(Base):
     __tablename__ = "sync_runs"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

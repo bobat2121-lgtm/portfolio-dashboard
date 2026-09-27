@@ -90,3 +90,91 @@ def live_quotes(wanted: frozenset):
     from portfolio.prices import get_quotes
 
     return get_quotes(set(wanted))
+
+
+# ---------------------------------------------------------------- shared by the Dashboard and Taxes pages
+
+BTC_QUOTE = ("kraken", "BTC")  # always fetched: the Themes and What-if views price things in bitcoin
+
+
+def panel(name: str):
+    """A keyed container: the panel styles (panel/assets/*.css) find it by its st-key-sw-panel-* class."""
+    return st.container(key=f"sw-panel-{name}")
+
+
+def portfolio_data() -> dict | None:
+    """Everything the pages draw from, repriced live. None (after saying why) if the database isn't ready."""
+    from portfolio import lenses, queries
+
+    try:
+        accounts, stored, cash = load("accounts"), load("holdings"), load("cash")
+    except Exception:  # noqa: BLE001 - e.g. read-only login before the first sync has created the tables
+        st.info("The database isn't ready yet. It fills in after the first sync runs.")
+        return None
+    wanted = frozenset((queries.wanted_quotes(stored) if not stored.empty else set()) | {BTC_QUOTE})
+    quotes, quote_errors = live_quotes(wanted)
+    holdings = queries.reprice(stored, quotes) if not stored.empty else stored
+    btc = quotes.get(BTC_QUOTE)
+    assets = lenses.with_themes(lenses.combine_assets(holdings, cash))
+    return {"accounts": accounts, "holdings": holdings, "cash": cash, "quote_errors": quote_errors,
+            "totals": queries.totals(holdings, cash) if not accounts.empty else None,
+            "btc_price": btc.price if btc else None, "btc_open": btc.prev_close if btc else None,
+            "assets": assets, "themes": lenses.by_theme(assets)}
+
+
+@st.cache_data(ttl=300, show_spinner="Rebuilding your history…")
+def history(holdings, cash):
+    from portfolio import history as hist
+    from portfolio.timeutil import today_ny
+
+    return hist.build(load("all_transactions"), holdings, cash, load("account_rows"), load("price_history"),
+                      load("splits"), today_ny())
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def tax_report(holdings):
+    from portfolio import taxes
+    from portfolio.timeutil import today_ny
+
+    return taxes.build(load("all_transactions"), holdings, load("account_rows"), load("splits"), today_ny())
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def betas(assets_min):
+    from portfolio import whatif
+
+    return whatif.betas(load("price_history"), assets_min)
+
+
+def header(title: str) -> None:
+    """Title, the panel-style switcher and the sync buttons; shows the result of an in-app sync."""
+    from panel import theme
+    from portfolio import sync
+    from portfolio.config import section
+
+    box = st.container(key="sw-header")
+    left, right = box.columns([3, 2], vertical_alignment="center")
+    left.title(title)
+    with right:
+        theme.style_picker()
+        b1, b2 = st.columns(2)
+        with b1:
+            if can_sync_here():
+                if st.button("Sync now", width="stretch", help="Pull every account now (asks SnapTrade to refresh too)"):
+                    with st.spinner("Syncing accounts…"):
+                        res = sync.run(trigger="manual", refresh=True)
+                    st.cache_data.clear()
+                    st.session_state["_last_sync"] = res
+                    st.rerun()
+            elif url := section("app").get("sync_workflow_url"):
+                st.link_button("Sync now", url, width="stretch",
+                               help="Opens the sync workflow on GitHub: press 'Run workflow', then refresh here in a minute")
+        with b2:
+            if st.button("Refresh prices", width="stretch"):
+                live_quotes.clear()
+                st.rerun()
+    if res := st.session_state.pop("_last_sync", None):
+        msg = " · ".join(f"{k}: {v['status']}" for k, v in res["accounts"].items()) or "no accounts synced"
+        skipped = [f"{k} skipped ({v['reason']})" for k, v in res["sources"].items() if v["status"] == "skipped"]
+        (st.success if res["status"] == "ok" else st.warning)(f"Sync {res['status']}: {msg}" + (
+            "  \n" + "  \n".join(skipped) if skipped else ""))

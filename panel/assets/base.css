@@ -28,7 +28,7 @@ html, body { background: var(--space) !important; }
 .stApp, [data-testid="stApp"], [data-testid="stAppViewContainer"], [data-testid="stMain"],
 [data-testid="stHeader"], [data-testid="stBottomBlockContainer"] { background: transparent !important; }
 [data-testid="stDecoration"] { display: none !important; }
-[data-testid="stElementContainer"]:has(#space-boot) { display: none !important; }
+[data-testid="stElementContainer"]:has(#space-boot), [data-testid="stElementContainer"]:has(.space-mood) { display: none !important; }
 html.space-consumed, html.space-consumed body { background: #000 !important; overflow: hidden !important; }
 html.space-consumed #root { visibility: hidden !important; }
 
@@ -162,3 +162,33 @@ h3::after { content: ""; display: block; width: 46px; height: 2px; margin-top: .
   .sw-crawl { animation: none; transform: none; position: static; margin: 1rem auto; }
   .sw-crawl-stage { height: auto; }
 }
+
+/* ---------------------------------------------------------------- achievements */
+.sw-badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: .7rem; }
+.sw-badge { display: flex; gap: .8rem; align-items: flex-start; padding: .75rem .8rem; background: rgba(6, 9, 15, .7);
+  box-shadow: inset 0 0 0 1px var(--panel-line); opacity: .72; }
+.sw-badge .ins { flex: 0 0 48px; height: 54px; display: grid; place-items: center; font-family: var(--label); font-weight: 900;
+  font-size: 1rem; color: var(--ink-dim); background: rgba(138, 143, 152, .12);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+.sw-badge.on { opacity: 1; box-shadow: inset 0 0 0 1px var(--sw-yellow-soft), 0 0 18px -8px var(--sw-yellow); }
+.sw-badge.on .ins { color: #04050B; background: var(--sw-yellow); box-shadow: 0 0 12px var(--sw-yellow); }
+.sw-badge .n { font-family: var(--label); font-weight: 700; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
+.sw-badge.on .n { color: var(--sw-yellow); }
+.sw-badge .d { font-size: .74rem; color: var(--ink-dim); margin: .15rem 0; }
+.sw-badge .x { font-size: .74rem; color: var(--ink); }
+.sw-badge .sw-bar { margin: .4rem 0 0; }
+
+/* ---------------------------------------------------------------- ticker */
+.sw-ticker { overflow: hidden; white-space: nowrap; border-top: 1px solid var(--sw-yellow-faint); border-bottom: 1px solid var(--sw-yellow-faint);
+  background: rgba(4, 5, 11, .55); padding: .3rem 0; margin-bottom: .6rem; mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
+.sw-ticker-track { display: inline-block; animation: sw-ticker 40s linear infinite; }
+.sw-ticker .t { font-family: var(--mono); font-size: .8rem; color: var(--ink); margin-right: 2.4rem; }
+.sw-ticker .t b { font-family: var(--label); font-weight: 700; color: var(--sw-yellow); letter-spacing: .06em; margin-right: .2rem; }
+.sw-ticker .t i { font-style: normal; margin-left: .25rem; }
+.sw-ticker:hover .sw-ticker-track { animation-play-state: paused; }
+@keyframes sw-ticker { from { transform: translateX(0) } to { transform: translateX(-50%) } }
+@media (prefers-reduced-motion: reduce) { .sw-ticker-track { animation: none; } }
+
+/* top navigation (Dashboard / Taxes) */
+[data-testid="stTopNavLink"], [data-testid="stNavLink"] { border-radius: 0 !important; }
+[data-testid="stTopNavLink"] span, [data-testid="stNavLink"] span { font-family: var(--label) !important; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; font-size: .7rem !important; }
