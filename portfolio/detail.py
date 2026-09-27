@@ -136,6 +136,17 @@ def taxes(lots: pd.DataFrame, tr: pd.DataFrame, rates: dict, today: date) -> dic
             "ira_value": float(ira["value"].fillna(0).sum()) if not ira.empty else 0.0}
 
 
+def portfolio_realized(realized: pd.DataFrame | None, since: date, today: date) -> dict:
+    """Every sale across the portfolio since `since`: the total gain or loss, and this calendar year's in
+    taxable accounts (what goes on this year's return)."""
+    if realized is None or realized.empty:
+        return {"total": 0.0, "taxable_year": 0.0, "year": today.year, "sales": 0}
+    rz = realized[realized["sold"].map(lambda d: _after(d, since))]
+    yr = rz[rz["sold"].map(lambda d: d.year == today.year) & ~rz["tax"].eq("ira")]
+    return {"total": float(rz["gain"].fillna(0).sum()), "taxable_year": float(yr["gain"].fillna(0).sum()),
+            "year": today.year, "sales": len(rz)}
+
+
 def option(r, underlying_price: float | None, today: date) -> dict | None:
     """The contract: strike, expiry, what you paid, where it breaks even at expiry and how far the
     underlying has to move to get there, and how much of its price is intrinsic value vs time value."""

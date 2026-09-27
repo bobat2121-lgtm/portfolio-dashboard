@@ -17,7 +17,7 @@ from portfolio import detail, lenses, models as m
 from portfolio.pricehist import yahoo_for
 
 BLUE, YELLOW, GREEN, RED, ORANGE, DIM = "#4BD5EE", "#FFE81F", "#39FF14", "#FF3B30", "#F26B1D", "#9DA3AE"
-RANGES = {"1M": 30, "3M": 91, "YTD": None, "All": None}
+RANGES = ["YTD", "3M", "6M", "1Y", "All"]  # the chart opens on YTD
 
 
 def close() -> None:
@@ -45,27 +45,22 @@ def _qty(q: float) -> str:
 # ---------------------------------------------------------------- sections
 
 def _summary(r, s: dict, since: date) -> str:
+    """One line of six: shares, avg cost, value, paid, unrealized, total return."""
     opt = r.asset_class == m.OPTION
-    held = f"held {s['held_days']} days" if s["held_days"] is not None else ""
     unreal = s["unrealized"]
     cells = [
         _cell("Contracts" if opt else "Shares", _qty(s["shares"]), f"{_qty(s['shares'] * 100)} shares" if opt else ""),
         _cell("Avg cost", price_fmt(s["avg_cost"]), "per share"),
-        _cell("Break-even", price_fmt(s["breakeven"]), "after gains & income",
-              tip="The price where selling everything leaves you even on this holding, counting what you've "
-                  "already made or lost selling it and any dividends since the start."),
-        _cell("Paid", usd(s["paid"]) if s["paid"] is not None else "—", "cost of what you hold"),
         _cell("Value", usd(s["value"]), "now"),
+        _cell("Paid", usd(s["paid"]) if s["paid"] is not None else "—", "cost basis"),
         _cell("Unrealized", usd(unreal, signed=True) if unreal is not None else "—",
               pct(unreal / s["paid"], True) if unreal is not None and s["paid"] else "", tone(unreal)),
-        _cell("Realized", usd(s["realized"], signed=True), "from sales", tone(s["realized"]),
-              tip=f"Gains and losses on shares of this holding you've sold since {since:%b} {since.day}, {since:%Y}."),
-        _cell("Income", usd(s["income"]), "dividends & interest"),
         _cell("Total return", usd(s["total"], signed=True),
-              pct(s["total"] / s["paid"], True) + " of paid" if s["paid"] else "", tone(s["total"])),
-        _cell("First bought", _d(s["first"]), held),
+              pct(s["total"] / s["paid"], True) + " of paid" if s["paid"] else "", tone(s["total"]),
+              tip=f"Unrealized, plus what you've made or lost selling it ({usd(s['realized'], signed=True)}) and its "
+                  f"dividends and interest ({usd(s['income'])}) since {since:%b} {since.day}, {since:%Y}."),
     ]
-    return _section("The position") + f'<div class="sw-dr-cells">{"".join(cells)}</div>'
+    return _section("The position") + f'<div class="sw-dr-cells one">{"".join(cells)}</div>'
 
 
 def _option(o: dict) -> str:
@@ -91,8 +86,6 @@ def _option(o: dict) -> str:
 
 
 def _tranches(lots: pd.DataFrame, mult: float) -> str:
-    if lots.empty:
-        return _section("Purchase tranches") + '<div class="sw-dr-note">No purchases since the start.</div>'
     top = max(1.0, float(lots["unrealized"].abs().max() or 1.0))
     rows = []
     for t in lots.itertuples():
@@ -112,11 +105,10 @@ def _tranches(lots: pd.DataFrame, mult: float) -> str:
             f"<td>{t.days:,}d</td><td>{term}</td></tr>")
     unit = "Contracts" if mult > 1 else "Shares"
     head = "".join(f"<th>{h}</th>" for h in ("Bought", "Account", unit, "Paid", "Cost", "Now", "Gain", "Held", "Term"))
-    return (_section("Purchase tranches", f"{len(lots)} open · oldest first")
-            + f'<div class="sw-dr-lots"><table><thead><tr>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table></div>')
+    return f'<div class="sw-dr-lots"><table><thead><tr>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table></div>'
 
 
-def _taxes(t: dict, lots: pd.DataFrame) -> str:
+def _taxes(t: dict, lots: pd.DataFrame, pr: dict, since: date) -> str:
     r = t["rates"]
     nxt = t["next"]
     cells = [
@@ -130,6 +122,11 @@ def _taxes(t: dict, lots: pd.DataFrame) -> str:
               f"{nxt['days']} days · {_qty(nxt['qty'])} sh" if nxt else "nothing waiting"),
         _cell("Loss lots", str(t["loss_lots"]), usd(t["loss"], signed=True) + " to harvest" if t["loss_lots"] else "none",
               "down" if t["loss_lots"] else ""),
+        _cell("Portfolio realized", usd(pr["total"], signed=True), f"taxable {pr['year']}: {usd(pr['taxable_year'], signed=True)}",
+              tone(pr["total"]),
+              tip=f"Every sale across the whole portfolio since {since:%b} {since.day}, {since:%Y} ({pr['sales']} lots): "
+                  f"the total gain or loss. Under it, this year's in taxable accounts, the part that goes on this "
+                  f"year's return."),
     ]
     notes = []
     if t["wash_until"]:
@@ -141,16 +138,16 @@ def _taxes(t: dict, lots: pd.DataFrame) -> str:
     if lots.empty:
         notes.append("No purchases since the start, so there are no tax lots to show.")
     note_html = "".join(f'<div class="sw-dr-note">{n}</div>' for n in notes)
-    return _section("Taxes") + f'<div class="sw-dr-cells">{"".join(cells)}</div>{note_html}'
+    return _section("Taxes") + f'<div class="sw-dr-cells one">{"".join(cells)}</div>{note_html}'
 
 
 def _cash(r, ctx) -> None:
     by = detail.cash_by_account(ctx["holdings"], ctx["cash"])
     total = float(by["amount"].sum()) if not by.empty else 0.0
     rows = "".join(
-        f'<div class="sw-dr-acct"><span>{esc(a.account)}</span><b>{usd(a.amount)}</b>'
-        f'<div class="sw-bar"><i style="width:{max(1.5, a.amount / total * 100 if total else 0):.1f}%"></i></div></div>'
-        for a in by.itertuples())
+        f'<div class="sw-dr-acct"><span>{esc(a.account)} <small>{a.amount / total:.1%}</small></span><b>{usd(a.amount)}</b>'
+        f'<div class="sw-bar"><i style="width:{max(1.5, a.amount / total * 100):.1f}%"></i></div></div>'
+        for a in by.itertuples()) if total else ""
     st.html(_head(r, ctx["since"]) + _section("Where it sits")
             + f'<div class="sw-dr-accts">{rows or "<div class=sw-dr-note>No cash right now.</div>"}</div>')
 
@@ -197,11 +194,10 @@ def _chart(px: pd.DataFrame, marks: pd.DataFrame, lines: list[tuple]) -> alt.Lay
                       .encode(y=alt.Y("close:Q"), x=alt.value(0), text="label:N"))
     if not marks.empty:
         mk = marks.assign(date=pd.to_datetime(marks["date"]), close=marks["price"])
-        layers.append(alt.Chart(mk).mark_point(filled=True, opacity=0.95, stroke="#04050B", strokeWidth=0.8).encode(
+        layers.append(alt.Chart(mk).mark_circle(opacity=0.9, stroke="#04050B", strokeWidth=1.2).encode(
             x=x, y=alt.Y("close:Q"),
-            shape=alt.Shape("side:N", scale=alt.Scale(domain=[m.BUY, m.SELL], range=["triangle-up", "triangle-down"]), legend=None),
             color=alt.Color("side:N", scale=alt.Scale(domain=[m.BUY, m.SELL], range=[GREEN, RED]), legend=None),
-            size=alt.Size("amount:Q", scale=alt.Scale(range=[60, 420]), legend=None),
+            size=alt.Size("amount:Q", scale=alt.Scale(range=[140, 900]), legend=None),
             tooltip=[alt.Tooltip("date:T", title="Date", format="%b %d, %Y"), alt.Tooltip("side:N", title="Trade"),
                      alt.Tooltip("qty:Q", title="Shares", format=",.4~f"), alt.Tooltip("price:Q", title="Price", format="$,.2f"),
                      alt.Tooltip("amount:Q", title="Amount", format="$,.0f")]))
@@ -227,12 +223,12 @@ def _price_section(r, ctx, s: dict, opt: dict | None, marks: pd.DataFrame) -> No
     if px.empty:
         st.html(_section(title) + '<div class="sw-dr-note">No price history for this one yet.</div>')
         return
-    st.html(_section(title, "▲ buys  ▼ sells, sized by amount" if not marks.empty else ""))
-    # options open on the last 3 months (what the contract's life looks like); everything else on it all
-    pick = st.segmented_control("Range", list(RANGES), default="3M" if opt else "All", label_visibility="collapsed",
-                                key="sw-drawer-range-opt" if opt else "sw-drawer-range") or "All"
+    st.html(_section(title, '<span class="up">●</span> bought  <span class="down">●</span> sold, sized by amount'
+                     if not marks.empty else ""))
+    pick = st.segmented_control("Range", RANGES, default="YTD", key="sw-drawer-range", label_visibility="collapsed") or "YTD"
     today = ctx["today"]
-    start = {"1M": today - timedelta(days=30), "3M": today - timedelta(days=91), "YTD": date(today.year, 1, 1)}.get(pick)
+    start = {"YTD": date(today.year, 1, 1), "3M": today - timedelta(days=91), "6M": today - timedelta(days=182),
+             "1Y": today - timedelta(days=365)}.get(pick)
     if start:
         px = px[px["date"] >= pd.Timestamp(start)]
         marks = marks[pd.to_datetime(marks["date"]) >= pd.Timestamp(start)] if not marks.empty else marks
@@ -262,4 +258,10 @@ def render(r, ctx: dict) -> None:
         opt = detail.option(r, spot, today)
     st.html(_head(r, since) + _summary(r, s, since) + (_option(opt) if opt else ""))
     _price_section(r, ctx, s, opt, detail.by_day(tr))
-    st.html(_tranches(lots, mult) + _taxes(detail.taxes(lots, tr, ctx["rates"], today), lots))
+    if lots.empty:
+        st.html(_section("Purchase tranches") + '<div class="sw-dr-note">No purchases since the start.</div>')
+    else:
+        with st.expander(f"Purchase tranches · {len(lots)} open · oldest first", expanded=False):   # starts folded
+            st.html(_tranches(lots, mult))
+    st.html(_taxes(detail.taxes(lots, tr, ctx["rates"], today), lots,
+                   detail.portfolio_realized(ctx["realized"], since, today), since))

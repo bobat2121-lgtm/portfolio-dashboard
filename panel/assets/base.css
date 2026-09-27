@@ -297,6 +297,7 @@ h3::after { content: ""; display: block; width: 46px; height: 2px; margin-top: .
 [class*="st-key-sw-slot-"] [data-testid="stHtml"], [class*="st-key-sw-slot-"] .sw-hold { height: 100%; }
 /* an invisible button over the whole card: click anywhere to open or close */
 [class*="st-key-sw-open-"] { position: absolute !important; inset: 0; z-index: 2; margin: 0 !important; width: auto !important; }
+[class*="st-key-sw-open-"] [data-testid="stButton"] { width: 100%; height: 100%; }
 [class*="st-key-sw-open-"] button { width: 100% !important; height: 100% !important; min-height: 0 !important; opacity: 0; cursor: pointer; }
 /* hover (and the open card): the same lightsaber blue as the Sync / Refresh buttons */
 .sw-hold { transition: box-shadow .15s ease; }
@@ -326,6 +327,13 @@ h3::after { content: ""; display: block; width: 46px; height: 2px; margin-top: .
   border: 1px solid var(--panel-line); border-radius: 12px; overflow: hidden; }
 .sw-dr-cells .sw-st { padding: .5rem .8rem; }
 .sw-dr-cells .sw-st .v { font-size: 1.02rem; }
+.sw-dr-cells.one { grid-template-columns: repeat(6, minmax(0, 1fr)); }                 /* the position: one line */
+@media (max-width: 900px) { .sw-dr-cells.one { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .sw-dr-cells.one { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* the tranches fold away under a section-style header */
+.st-key-sw-drawer [data-testid="stExpander"] details { border-radius: 12px !important; background: rgba(4, 5, 11, .35); margin-top: .4rem; }
+.st-key-sw-drawer [data-testid="stExpander"] summary p { color: var(--saber-blue) !important; font-size: .62rem !important;
+  letter-spacing: .16em !important; }
 .sw-dr-lots { max-height: 340px; overflow: auto; border: 1px solid var(--panel-line); border-radius: 12px; }
 .sw-dr-lots table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: .8rem; color: var(--ink); }
 .sw-dr-lots th { position: sticky; top: 0; z-index: 1; background: #080b12; text-align: left; padding: .5rem .65rem; white-space: nowrap;
@@ -346,5 +354,7 @@ h3::after { content: ""; display: block; width: 46px; height: 2px; margin-top: .
 .sw-dr-acct { display: grid; grid-template-columns: 1fr auto; gap: .25rem 1rem; padding: .5rem 0; border-bottom: 1px solid rgba(138, 143, 152, .12);
   font-family: var(--mono); color: var(--ink); }
 .sw-dr-acct b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.sw-dr-acct { --c: var(--sw-yellow); }                                            /* lit like the cards' share bars */
 .sw-dr-acct .sw-bar { grid-column: 1 / -1; margin: 0; }
+.sw-dr-acct small { margin-left: .4rem; color: var(--ink-dim); font-size: .72rem; }
 @media (max-width: 640px) { .st-key-sw-drawer { padding: .9rem .8rem 1rem !important; } .sw-dr-since { margin-left: 0; } }

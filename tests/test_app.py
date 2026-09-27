@@ -46,6 +46,7 @@ def test_dashboard_renders_with_data(tmp_db, monkeypatch):
     at.button(key="sw-open-0").click().run()
     assert not at.exception, at.exception
     assert "The position" in drawer_html()
+    assert drawer_html().count('class=\\"sw-st\\"') == 6                         # one line of six
     assert any("Taxes" in str(e.proto) and "sw-dr-k" in str(e.proto) for e in at.get("html"))
     at.button(key="sw-drawer-close").click().run()
     assert not drawer_html()

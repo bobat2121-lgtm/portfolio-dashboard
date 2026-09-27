@@ -82,6 +82,19 @@ def test_taxes_leave_the_ira_out_net_the_terms_and_flag_wash_sales_only_against_
     assert alone["wash_until"] is None                                                   # its own buy can't wash it
 
 
+def test_portfolio_realized_since_the_start_and_this_years_taxable_part():
+    realized = pd.DataFrame([
+        {"sold": date(2025, 3, 1), "gain": 999.0, "tax": "taxable"},                   # before the start
+        {"sold": date(2025, 11, 7), "gain": -127.0, "tax": "taxable"},                 # last year
+        {"sold": date(2026, 8, 25), "gain": 640.0, "tax": "taxable"},
+        {"sold": date(2026, 5, 1), "gain": -300.0, "tax": "ira"},                      # not on the return
+    ])
+    pr = detail.portfolio_realized(realized, SINCE, TODAY)
+    assert pr["total"] == pytest.approx(-127 + 640 - 300) and pr["taxable_year"] == pytest.approx(640)
+    assert pr["sales"] == 3 and pr["year"] == 2026
+    assert detail.portfolio_realized(realized.iloc[:0], SINCE, TODAY)["total"] == 0
+
+
 def test_option_contract_numbers():
     r = row(asset="ASST $35 call Jan '28", symbol="ASST  280121C00035000", asset_class="option", quantity=1.0,
             price=11.65, market_value=1165.0, cost_basis=1210.66)
