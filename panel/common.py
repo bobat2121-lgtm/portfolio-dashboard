@@ -37,8 +37,8 @@ def gate() -> None:
     from portfolio.db import is_postgres
 
     pw = env("APP_PASSWORD") or ""
-    if not is_postgres() and not pw:
-        return
+    if env("DEMO") or (not is_postgres() and not pw):
+        return  # demo data is made up; local SQLite without a password is your own machine
     if len(pw) < MIN_PASSWORD:
         st.error(f"Locked: set APP_PASSWORD (at least {MIN_PASSWORD} characters) in the app's secrets.")
         st.stop()

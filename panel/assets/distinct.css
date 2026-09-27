@@ -1,0 +1,21 @@
+/* DISTINCT: solid, chamfered panels sit on top of space; the scene shows only in the gaps around them. */
+.st-key-sw-header, .st-key-sw-metrics [data-testid="stMetric"], .st-key-sw-body [role="tablist"],
+[class*="st-key-sw-panel"], [data-testid="stForm"] {
+  position: relative;
+  background: var(--panel) !important;
+  clip-path: var(--chamfer);
+  box-shadow: inset 0 0 0 1px var(--panel-line), inset 0 2px 0 0 var(--sw-yellow-soft);
+}
+.st-key-sw-header { padding: 1.1rem 1.4rem .9rem !important; }
+.st-key-sw-header h1 { padding: 0 !important; }
+.st-key-sw-metrics [data-testid="stMetric"] { padding: .9rem 1rem .8rem !important; min-height: 100%; }
+.st-key-sw-metrics [data-testid="stHorizontalBlock"] { gap: .7rem; }
+.st-key-sw-body [role="tablist"] { padding: 0 1.2rem; }
+[class*="st-key-sw-panel"] { padding: 1.1rem 1.3rem 1.3rem !important; margin-top: .6rem; }
+[data-testid="stForm"] { padding: 1.6rem !important; border: none !important; }
+
+/* a yellow tick on each panel's cut corner */
+.st-key-sw-header::before, [class*="st-key-sw-panel"]::before, [data-testid="stForm"]::before {
+  content: ""; position: absolute; left: 3px; top: 3px; width: 14px; height: 14px; pointer-events: none;
+  background: var(--sw-yellow); clip-path: polygon(0 12px, 12px 0, 14px 0, 0 14px);
+}

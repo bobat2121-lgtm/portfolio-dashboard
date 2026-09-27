@@ -1,0 +1,102 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap');
+/*END-IMPORTS*/
+/* Shared by all three panel styles. Star Wars palette; Star Jedi for titles, Share Tech Mono for data. */
+:root {
+  --sw-yellow: #FFE81F;
+  --sw-yellow-soft: rgba(255, 232, 31, .38);
+  --sw-yellow-faint: rgba(255, 232, 31, .14);
+  --saber-blue: #4BD5EE;
+  --saber-blue-soft: rgba(75, 213, 238, .35);
+  --sith: #FF3B30;
+  --saber-green: #39FF14;
+  --rebel: #F26B1D;
+  --imperial: #8A8F98;
+  --ink: #E9E4CC;
+  --ink-dim: #9DA3AE;
+  --space: #04050B;
+  --panel: rgba(7, 10, 17, .95);
+  --panel-line: rgba(138, 143, 152, .28);
+  --title: 'Star Jedi', 'Orbitron', sans-serif;
+  --mono: 'Share Tech Mono', ui-monospace, monospace;
+  --label: 'Orbitron', 'Share Tech Mono', sans-serif;  /* small caps text: Star Jedi is only legible large */
+  --chamfer: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+
+/* the scene lives on a fixed canvas behind the app */
+html, body { background: var(--space) !important; }
+/* the scene canvas sits at z-index -1: above the page background, below everything Streamlit draws */
+.stApp, [data-testid="stApp"], [data-testid="stAppViewContainer"], [data-testid="stMain"],
+[data-testid="stHeader"], [data-testid="stBottomBlockContainer"] { background: transparent !important; }
+[data-testid="stDecoration"] { display: none !important; }
+[data-testid="stElementContainer"]:has(#space-boot) { display: none !important; }
+html.space-consumed, html.space-consumed body { background: #000 !important; overflow: hidden !important; }
+html.space-consumed #root { visibility: hidden !important; }
+
+/* leave the side gutters to the Death Star (left) and the fleet (right) */
+.block-container, [data-testid="stMainBlockContainer"] {
+  max-width: clamp(900px, 66vw, 1400px) !important;
+  padding-top: 2.4rem !important;
+  padding-bottom: 4rem !important;
+}
+@media (max-width: 999px) { .block-container, [data-testid="stMainBlockContainer"] { max-width: 100% !important; } }
+
+/* type */
+html, body, .stApp, p, li, label, input, textarea, [data-testid="stMarkdownContainer"] { font-family: var(--mono); }
+h1, h2, h3, h4 { font-family: var(--title) !important; font-weight: 400 !important; text-transform: lowercase; letter-spacing: .04em; }
+h1 {
+  color: var(--sw-yellow) !important; font-size: 2.9rem !important; line-height: 1.1 !important;
+  text-shadow: 0 0 2px rgba(255, 232, 31, .9), 0 0 18px rgba(255, 232, 31, .35);
+}
+h2, h3 { color: var(--ink) !important; font-size: 1.15rem !important; padding-bottom: .35rem !important; }
+h3::after { content: ""; display: block; width: 46px; height: 2px; margin-top: .45rem; background: var(--sw-yellow); box-shadow: 0 0 8px var(--sw-yellow-soft); }
+[data-testid="stHeaderActionElements"], h1 a, h2 a, h3 a { display: none !important; }
+[data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] * { color: var(--ink-dim) !important; font-family: var(--mono); }
+
+/* metrics */
+[data-testid="stMetricLabel"] * { font-family: var(--label) !important; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-dim) !important; font-size: .58rem !important; }
+[data-testid="stMetricLabel"] > div, [data-testid="stMetricLabel"] p { overflow: visible !important; text-overflow: clip !important; white-space: nowrap; }
+[data-testid="stMetricValue"], [data-testid="stMetricValue"] * { font-family: var(--mono) !important; color: var(--ink) !important; font-size: clamp(1rem, 1.3vw, 1.6rem) !important; letter-spacing: 0; }
+[data-testid="stMetricValue"] > div { overflow: visible !important; text-overflow: clip !important; }
+.st-key-sw-metrics [data-testid="stHorizontalBlock"] { gap: .6rem !important; }
+.st-key-sw-header [data-testid="stButtonGroup"] { justify-content: flex-end; }
+.st-key-sw-header [data-testid="stButtonGroup"] button p { font-size: .68rem !important; }
+.st-key-sw-header [data-testid^="stBaseButton"] p, .st-key-sw-header [data-testid="stLinkButton"] p { font-size: .62rem !important; letter-spacing: .03em !important; white-space: nowrap; }
+.st-key-sw-metrics [data-testid="stColumn"]:first-child [data-testid="stMetricValue"] * { color: var(--sw-yellow) !important; text-shadow: 0 0 14px rgba(255, 232, 31, .35); }
+[data-testid="stMetricDelta"] { font-family: var(--mono) !important; }
+
+/* tabs (react-aria markup in Streamlit 1.64) */
+.st-key-sw-body [role="tablist"] { gap: 1.8rem; border-bottom: 1px solid var(--panel-line); }
+[data-testid="stTab"] { padding: .6rem .1rem !important; font-family: var(--label) !important; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .16em; font-size: .72rem !important; color: var(--ink-dim) !important; }
+[data-testid="stTab"] * { font-family: inherit !important; font-size: inherit !important; }
+[data-testid="stTab"]:hover { color: var(--saber-blue) !important; }
+[data-testid="stTab"][aria-selected="true"] { color: var(--sw-yellow) !important; text-shadow: 0 0 10px rgba(255, 232, 31, .45);
+  box-shadow: inset 0 -2px 0 var(--sw-yellow), 0 6px 12px -8px var(--sw-yellow); }
+
+/* buttons: yellow outline, lightsaber-blue on hover */
+[data-testid^="stBaseButton"], [data-testid="stLinkButton"] a {
+  background: rgba(4, 5, 11, .55) !important; border: 1px solid var(--sw-yellow-soft) !important; border-radius: 0 !important;
+  color: var(--sw-yellow) !important; clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+  transition: border-color .15s, box-shadow .15s, color .15s;
+}
+[data-testid^="stBaseButton"] p, [data-testid="stLinkButton"] a p { font-family: var(--label) !important; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; }
+[data-testid^="stBaseButton"]:hover, [data-testid="stLinkButton"] a:hover {
+  border-color: var(--saber-blue) !important; color: var(--saber-blue) !important; box-shadow: 0 0 12px var(--saber-blue-soft), inset 0 0 8px var(--saber-blue-soft);
+}
+[data-testid="stBaseButton-segmented_controlActive"], [data-testid="stBaseButton-pillsActive"] {
+  background: var(--sw-yellow-faint) !important; border-color: var(--sw-yellow) !important; box-shadow: inset 0 0 10px var(--sw-yellow-faint);
+}
+
+/* inputs (password) */
+[data-testid="stTextInputRootElement"], [data-baseweb="input"] { background: rgba(4, 5, 11, .8) !important; border-radius: 0 !important; border-color: var(--sw-yellow-soft) !important; }
+
+/* alerts */
+[data-testid="stAlertContainer"] { background: rgba(8, 12, 20, .78) !important; border-left: 3px solid var(--saber-blue) !important; border-radius: 0 !important; color: var(--ink) !important; }
+
+/* data */
+[data-testid="stDataFrame"] { border: 1px solid var(--panel-line); }
+[data-testid="stExpander"] details { border-radius: 0 !important; border-color: var(--panel-line) !important; background: rgba(4, 5, 11, .5); }
+[data-testid="stExpander"] summary p { font-family: var(--label) !important; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; font-size: .75rem; }
+
+/* scrollbars */
+* { scrollbar-width: thin; scrollbar-color: #2a3140 transparent; }

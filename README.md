@@ -97,6 +97,28 @@ covers it).
 API page, Neon role password), create a new one, and update `.env` and the GitHub/Streamlit secrets.
 `python -m jobs.readonly_login` rotates the read-only DB password.
 
+## The look
+
+The dashboard sits over a pixel-art galaxy drawn live in the browser ([panel/assets/space.js](panel/assets/space.js)):
+twinkling stars and nebula, the nine planets orbiting the sun (with real phases, Saturn's rings and Earth's moon),
+Tatooine, Hoth, Mustafar and Endor far off, the Death Star with its TIE patrol on the left and the rebel fleet on
+the right. Every 20 s to 2 min something happens: a shooting star, meteor shower, supernova, comet, tumbling
+asteroid, pulsar, a fighter jumping to hyperspace, or the Death Star charging its superlaser. About once in 300
+events (roughly every 6 hours of viewing) a black hole opens, pulls everything in, swallows the dashboard and leaves
+the tab black until you reload.
+
+- **Three panel styles** from the switcher at the top right (remembered in the URL as `?style=`):
+  `distinct` (solid panels, space in the gaps), `melded` (no panels, space behind everything) and `mix`
+  (floating header and numbers, solid data panels).
+- **Try an event now:** add `?space=supernova` to the URL (or `meteor_shower`, `comet`, `asteroid`, `pulsar`,
+  `hyperspace`, `superlaser`, `shooting_star`, `blackhole`). From the browser console:
+  `__space.trigger("comet")`.
+- People who set their OS to *reduce motion* get the scene without the random events.
+- Type: **Star Jedi** by Boba Fonts (freeware) for titles, kept as its original, intact zip in
+  `panel/assets/fonts/` as its license asks, plus Orbitron and Share Tech Mono from Google Fonts.
+- Colors are Star Wars: crawl yellow `#FFE81F`, lightsaber blue `#4BD5EE`, Sith red `#FF3B30`, saber green
+  `#39FF14`, rebel orange `#F26B1D`. Theme settings are in [.streamlit/config.toml](.streamlit/config.toml).
+
 ## Commands
 
 | | |
@@ -149,8 +171,8 @@ Nothing is ever deleted. When you exit a position, its row stays at quantity 0 w
 ```
 portfolio/       config, db (schema), models, sources/{snaptrade,kraken}, prices, costbasis, sync, queries
 jobs/            sync, link, readonly_login, demo (CLI entry points)
-panel/           Streamlit plumbing (secrets, password gate, caches)
-streamlit_app.py the dashboard (plain; styling comes next)
+panel/           Streamlit plumbing (secrets, password gate, caches) + theme.py and assets/ (the space scene, CSS, font)
+streamlit_app.py the dashboard
 config/portfolio.yaml   account map + knobs
 .github/workflows/sync.yml
 ```

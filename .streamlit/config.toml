@@ -8,3 +8,25 @@ gatherUsageStats = false
 # Visitors never see tracebacks or error text (they can name hosts and files). Read the app logs instead.
 showErrorDetails = "none"
 toolbarMode = "minimal"
+
+# Star Wars palette. The pixel-space scene and panel styles live in panel/theme.py + panel/assets/.
+[theme]
+base = "dark"
+primaryColor = "#FFE81F"
+backgroundColor = "#04050B"
+secondaryBackgroundColor = "#0C111B"
+textColor = "#E9E4CC"
+linkColor = "#4BD5EE"
+borderColor = "#252C3A"
+dataframeBorderColor = "#1C2230"
+dataframeHeaderBackgroundColor = "#0A0E17"
+baseRadius = "0rem"
+buttonRadius = "0rem"
+font = "'Share Tech Mono', ui-monospace, monospace"
+headingFont = "'Star Jedi', 'Orbitron', sans-serif"
+redColor = "#FF3B30"
+greenColor = "#39FF14"
+blueColor = "#4BD5EE"
+yellowColor = "#FFE81F"
+orangeColor = "#F26B1D"
+chartCategoricalColors = ["#FFE81F", "#4BD5EE", "#FF3B30", "#39FF14", "#F26B1D", "#B388FF", "#D8B373", "#8A8F98"]

@@ -1,0 +1,15 @@
+/* MELDED: no panels at all. Content floats on space; a soft dark vignette and text glow keep it readable. */
+[data-testid="stMainBlockContainer"]::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(ellipse 58% 70% at 50% 45%, rgba(3, 4, 10, .55), rgba(3, 4, 10, .15) 60%, transparent 80%);
+}
+h1, h2, h3, p, [data-testid="stMetricValue"], [data-testid="stMetricLabel"], [data-testid="stTab"] {
+  text-shadow: 0 0 3px #000, 0 0 10px rgba(0, 0, 0, .9);
+}
+.st-key-sw-metrics [data-testid="stMetric"] { padding: .4rem 0 .6rem; border-bottom: 1px solid var(--sw-yellow-faint); }
+.st-key-sw-body [role="tablist"] { border-bottom-color: var(--sw-yellow-faint); }
+/* black table and chart backgrounds drop out, so the scene shows behind the numbers */
+[data-testid="stDataFrame"], [data-testid="stVegaLiteChart"], [data-testid="stArrowVegaLiteChart"] { mix-blend-mode: screen; }
+[data-testid="stDataFrame"] { border-color: transparent; border-top: 1px solid var(--sw-yellow-faint); }
+[data-testid="stForm"] { background: transparent !important; border: 1px solid var(--sw-yellow-faint) !important; border-radius: 0 !important; }
+[data-testid="stAlertContainer"] { background: rgba(8, 12, 20, .35) !important; }

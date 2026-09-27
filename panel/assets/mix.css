@@ -1,0 +1,24 @@
+/* MIX: the header, headline numbers and tabs float on space (melded); the data sits in solid, slightly
+   frosted panels (distinct). */
+.st-key-sw-header h1, .st-key-sw-metrics [data-testid="stMetricValue"], .st-key-sw-metrics [data-testid="stMetricLabel"],
+[data-testid="stTab"] {
+  text-shadow: 0 0 3px #000, 0 0 12px rgba(0, 0, 0, .95);
+}
+.st-key-sw-metrics [data-testid="stMetric"] {
+  padding: .35rem 0 .55rem .8rem; border-left: 2px solid var(--sw-yellow-soft);
+  background: linear-gradient(90deg, rgba(4, 5, 11, .55), transparent 85%);
+}
+.st-key-sw-body [role="tablist"] { border-bottom-color: var(--sw-yellow-faint); }
+[class*="st-key-sw-panel"], [data-testid="stForm"] {
+  position: relative;
+  background: rgba(7, 10, 17, .86) !important;
+  backdrop-filter: blur(2px);
+  clip-path: var(--chamfer);
+  box-shadow: inset 0 0 0 1px var(--panel-line), inset 0 2px 0 0 var(--sw-yellow-soft);
+  padding: 1.1rem 1.3rem 1.3rem !important; margin-top: .6rem;
+}
+[data-testid="stForm"] { border: none !important; padding: 1.6rem !important; }
+[class*="st-key-sw-panel"]::before, [data-testid="stForm"]::before {
+  content: ""; position: absolute; left: 3px; top: 3px; width: 14px; height: 14px; pointer-events: none;
+  background: var(--sw-yellow); clip-path: polygon(0 12px, 12px 0, 14px 0, 0 14px);
+}

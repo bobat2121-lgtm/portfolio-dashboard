@@ -1,4 +1,4 @@
-"""Portfolio dashboard. Plain on purpose: this is the data wiring; the look comes later.
+"""Portfolio dashboard: your accounts over a pixel-art galaxy (see panel/theme.py for the look).
 
     streamlit run streamlit_app.py              # your data
     streamlit run streamlit_app.py -- --demo    # made-up data from `python -m jobs.demo`
@@ -12,6 +12,7 @@ from datetime import timedelta
 import pandas as pd
 import streamlit as st
 
+from panel import theme
 from panel.common import boot, can_sync_here, gate, live_quotes, load
 
 if "--demo" in sys.argv:
@@ -19,6 +20,7 @@ if "--demo" in sys.argv:
 
 st.set_page_config(page_title="Portfolio", layout="wide")
 boot()
+theme.apply(theme.current_style())  # the scene shows on the lock screen too; it carries no data
 gate()
 
 from portfolio import queries, sync  # noqa: E402  (after boot: secrets must be in env first)
@@ -28,6 +30,12 @@ from portfolio.timeutil import utcnow  # noqa: E402
 USD = st.column_config.NumberColumn(format="dollar")
 PCT = st.column_config.NumberColumn(format="percent")
 QTY = st.column_config.NumberColumn(format="%.6g")
+
+
+def panel(name: str):
+    """A keyed container: the panel styles (panel/assets/*.css) find it by its st-key-sw-panel-* class."""
+    return st.container(key=f"sw-panel-{name}")
+
 
 # ---------------------------------------------------------------- data
 
@@ -45,22 +53,27 @@ totals = queries.totals(holdings, cash) if not accounts.empty else None
 
 # ---------------------------------------------------------------- header
 
-left, right = st.columns([4, 1])
+header = st.container(key="sw-header")
+left, right = header.columns([3, 2], vertical_alignment="center")
 left.title("Portfolio")
 with right:
-    if can_sync_here():
-        if st.button("Sync now", width="stretch", help="Pull every account now (asks SnapTrade to refresh too)"):
-            with st.spinner("Syncing accounts…"):
-                res = sync.run(trigger="manual", refresh=True)
-            st.cache_data.clear()
-            st.session_state["_last_sync"] = res
+    theme.style_picker()
+    b1, b2 = st.columns(2)
+    with b1:
+        if can_sync_here():
+            if st.button("Sync now", width="stretch", help="Pull every account now (asks SnapTrade to refresh too)"):
+                with st.spinner("Syncing accounts…"):
+                    res = sync.run(trigger="manual", refresh=True)
+                st.cache_data.clear()
+                st.session_state["_last_sync"] = res
+                st.rerun()
+        elif url := section("app").get("sync_workflow_url"):
+            st.link_button("Sync now", url, width="stretch",
+                           help="Opens the sync workflow on GitHub: press 'Run workflow', then refresh here in a minute")
+    with b2:
+        if st.button("Refresh prices", width="stretch"):
+            live_quotes.clear()
             st.rerun()
-    elif url := section("app").get("sync_workflow_url"):
-        st.link_button("Sync now (GitHub)", url, width="stretch",
-                       help="Opens the sync workflow on GitHub: press 'Run workflow', then refresh here in a minute")
-    if st.button("Refresh prices", width="stretch"):
-        live_quotes.clear()
-        st.rerun()
 
 if res := st.session_state.pop("_last_sync", None):
     msg = " · ".join(f"{k}: {v['status']}" for k, v in res["accounts"].items()) or "no accounts synced"
@@ -78,7 +91,7 @@ if pd.notna(last_sync) and utcnow() - last_sync.to_pydatetime() > timedelta(hour
 for err in quote_errors:
     st.caption(f"Live prices partly unavailable, using broker prices: {err}")
 
-c1, c2, c3, c4, c5, c6 = st.columns(6)
+c1, c2, c3, c4, c5, c6 = st.container(key="sw-metrics").columns(6)
 c1.metric("Total", f"${totals['total']:,.2f}")
 c2.metric("Today", f"${totals['day_change']:,.2f}",
           f"{totals['day_change'] / (totals['total'] - totals['day_change']):.2%}" if totals["total"] else None)
@@ -91,11 +104,12 @@ c5.metric("Cash", f"${totals['cash']:,.2f}")
 c6.metric("Unrealized", f"${totals['unrealized']:,.2f}",
           help=f"Invested minus cost basis. Cost basis known for {totals['basis_coverage']:.0%} of invested value.")
 
-overview, holdings_tab, activity_tab, sync_tab = st.tabs(["Overview", "Holdings", "Activity", "Sync"])
+overview, holdings_tab, activity_tab, sync_tab = st.container(key="sw-body").tabs(
+    ["Overview", "Holdings", "Activity", "Sync"])
 
 # ---------------------------------------------------------------- overview
 
-with overview:
+with overview, panel("accounts"):
     by_acct = queries.allocation(holdings, cash, by="account")
     st.subheader("Accounts")
     st.dataframe(
@@ -104,15 +118,17 @@ with overview:
         hide_index=True, width="stretch",
         column_config={"live_value": USD, "weight": PCT, "cash": USD, "day_change": USD},
     )
+with overview:
     a1, a2 = st.columns(2)
-    with a1:
+    with a1, panel("asset-class"):
         st.subheader("By asset class")
         alloc = queries.allocation(holdings, cash, by="asset_class")
         st.bar_chart(alloc, x="asset_class", y="market_value", horizontal=True)
-    with a2:
+    with a2, panel("tax"):
         st.subheader("Taxable vs IRA")
         st.bar_chart(queries.allocation(holdings, cash, by="tax"), x="tax", y="market_value", horizontal=True)
 
+with overview, panel("history"):
     st.subheader("Value over time")
     hist = load("value_history")
     if hist.empty:
@@ -123,7 +139,8 @@ with overview:
 
 # ---------------------------------------------------------------- holdings
 
-with holdings_tab:
+with holdings_tab, panel("positions"):
+    st.subheader("Positions")
     if holdings.empty:
         st.caption("No open positions.")
     else:
@@ -147,22 +164,25 @@ with holdings_tab:
         swept = holdings[holdings["in_cash_balance"].astype(bool)]
         if not swept.empty:
             st.caption("Counted inside cash already: " + ", ".join(f"{r.symbol} ({r.account})" for r in swept.itertuples()))
-    if not cash.empty:
+if not cash.empty:
+    with holdings_tab, panel("cash"):
         st.subheader("Cash")
         st.dataframe(cash[["account", "currency", "amount", "buying_power", "updated_at"]], hide_index=True,
                      column_config={"amount": USD, "buying_power": USD})
 
 # ---------------------------------------------------------------- activity
 
-with activity_tab:
+with activity_tab, panel("changes"):
     st.subheader("Detected since last sync")
     st.caption("Holdings and cash that moved between syncs. This shows buys, sells and deposits "
                "before the broker posts the transaction.")
     st.dataframe(load("changes"), hide_index=True, width="stretch",
                  column_config={"value_delta": USD, "qty_before": QTY, "qty_after": QTY})
+with activity_tab, panel("transactions"):
     st.subheader("Transactions")
     st.dataframe(load("transactions"), hide_index=True, width="stretch",
                  column_config={"amount": USD, "price": USD, "fee": USD, "quantity": QTY})
+with activity_tab, panel("contributions"):
     st.subheader("Contributions by month")
     contrib = load("contributions")
     if contrib.empty:
@@ -172,13 +192,14 @@ with activity_tab:
 
 # ---------------------------------------------------------------- sync health
 
-with sync_tab:
+with sync_tab, panel("sync-accounts"):
     st.subheader("Accounts")
     st.dataframe(accounts[["key", "label", "source", "mapped", "number_mask", "data_as_of", "last_synced_at",
                            "broker_total", "total", "unpriced", "last_error"]],
                  hide_index=True, width="stretch", column_config={"broker_total": USD, "total": USD})
     if not accounts["mapped"].astype(bool).all():
         st.info("Some accounts aren't in config/portfolio.yaml. They're tracked, but add them there to name them.")
+with sync_tab, panel("runs"):
     st.subheader("Recent runs")
     runs = load("sync_runs")
     st.dataframe(runs.drop(columns=["summary"]), hide_index=True, width="stretch")
