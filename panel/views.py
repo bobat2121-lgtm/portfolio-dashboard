@@ -15,6 +15,7 @@ import streamlit as st
 from portfolio import lenses
 
 UP, DOWN, FLAT = "#39FF14", "#FF3B30", "#8A8F98"
+MIN_SHOWN = 100  # the asset cards and the ticker skip holdings worth $100 or less (dust like $1 of STRC)
 INK, DIM, YELLOW = "#E9E4CC", "#9DA3AE", "#FFE81F"
 
 
@@ -55,7 +56,7 @@ def assets_view(assets: pd.DataFrame) -> None:
     if assets.empty:
         st.caption("No holdings yet.")
         return
-    shown = assets[assets["market_value"] >= 1]
+    shown = assets[assets["market_value"] > MIN_SHOWN]
     cards = []
     for r in shown.itertuples():
         pnl = "" if pd.isna(r.unrealized) or r.asset == lenses.CASH_ASSET else (
@@ -330,7 +331,7 @@ def ticker(assets: pd.DataFrame, btc_price: float | None, btc_open: float | None
     if btc_price:
         items.append(("BTC", btc_price, (btc_price / btc_open - 1) if btc_open else None))
     for r in assets.itertuples():
-        if r.asset == lenses.CASH_ASSET or r.market_value < 1 or r.price is None or pd.isna(r.price):
+        if r.asset == lenses.CASH_ASSET or r.market_value <= MIN_SHOWN or r.price is None or pd.isna(r.price):
             continue
         prev_value = r.market_value - r.day_change
         items.append((r.asset, float(r.price), (r.day_change / prev_value) if prev_value else None))
