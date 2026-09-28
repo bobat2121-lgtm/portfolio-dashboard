@@ -29,7 +29,7 @@ html, body { background: var(--space) !important; }
 [data-testid="stHeader"], [data-testid="stBottomBlockContainer"] { background: transparent !important; }
 [data-testid="stDecoration"] { display: none !important; }
 [data-testid="stElementContainer"]:has(#space-boot), [data-testid="stElementContainer"]:has(.space-mood),
-[data-testid="stElementContainer"]:has(.sw-cookie) { display: none !important; }
+[data-testid="stElementContainer"]:has(.sw-cookie), .st-key-sw-pass-reader { display: none !important; }
 html.space-consumed, html.space-consumed body { background: #000 !important; overflow: hidden !important; }
 html.space-consumed #root { visibility: hidden !important; }
 

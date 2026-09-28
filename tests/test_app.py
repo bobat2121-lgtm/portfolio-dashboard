@@ -114,16 +114,16 @@ def test_switching_the_simulation_off_asks_for_the_password(tmp_db, monkeypatch)
     assert not at.exception, at.exception
     assert deck(at) and "$32,571" not in deck(at)                               # the real (test) accounts
     assert at.button(key="sw-sim-off") and at.button(key="sw-lock")
-    cookie = " ".join(str(e.proto) for e in at.get("html") if "sw-cookie" in str(e.proto))
-    assert "sw_pass=" in cookie and "Max-Age=2592000" in cookie and PW not in cookie
+    saved = " ".join(str(e.proto) for e in at.get("html") if "sw-cookie" in str(e.proto))
+    assert 'localStorage.setItem(\\"sw_pass\\"' in saved and PW not in saved
     at.button(key="sw-sim-off").click().run()                                   # back on: no password needed
     assert "$32,571" in deck(at)
     at.button(key="sw-sim-on").click().run()                                    # and off again, still unlocked
     assert "$32,571" not in deck(at) and not at.text_input
     at.button(key="sw-lock").click().run()                                      # Lock: forget this browser
     assert "$32,571" in deck(at) and "Lock" not in [b.label for b in at.button]
-    cookie = " ".join(str(e.proto) for e in at.get("html") if "sw-cookie" in str(e.proto))
-    assert "Max-Age=0" in cookie
+    saved = " ".join(str(e.proto) for e in at.get("html") if "sw-cookie" in str(e.proto))
+    assert "localStorage.removeItem" in saved
     at.button(key="sw-sim-on").click().run()
     assert at.text_input[0].label == "Password"                                 # asks again
 
@@ -134,7 +134,7 @@ def test_a_remembered_browser_switches_off_without_asking(tmp_db, monkeypatch):
     monkeypatch.setenv("APP_PASSWORD", PW)
     run(FakeSource("kraken", kraken, derive=True))
     monkeypatch.setattr(prices, "get_quotes", lambda wanted: ({}, []))
-    monkeypatch.setattr(auth, "_cookie", lambda: auth.make_pass(PW, 3600))
+    monkeypatch.setattr(auth, "_reader", lambda **kw: {"token": auth.make_pass(PW, 3600)})  # the page sends it
     at = app().run()
     assert "$32,571" in deck(at)                                   # still opens on the Simulation
     at.button(key="sw-sim-on").click().run()

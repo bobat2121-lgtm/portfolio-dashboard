@@ -66,7 +66,7 @@ def test_unlocking_checks_the_password(monkeypatch):
     assert auth.PASS not in state
     assert auth.unlock(PW, False) is None
     assert auth.valid(state[auth.PASS], PW) and auth.PENDING not in state   # this tab only
-    assert auth.unlock(PW, True) is None and "Max-Age=2592000" in state[auth.PENDING]
+    assert auth.unlock(PW, True) is None and state[auth.PASS] in state[auth.PENDING]      # saved in the browser
     for _ in range(auth.IP_TRIES):
         auth.unlock("wrong", True)
     assert "Too many" in auth.unlock(PW, True)                               # even the right one waits

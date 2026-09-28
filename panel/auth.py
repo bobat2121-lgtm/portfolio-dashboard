@@ -6,9 +6,9 @@ app's secrets), asked for when the Simulation switch is turned off. The check is
 `authorized()`, and every data read goes through it (panel.common.simulated), so nothing a visitor's
 browser sends can reach real data without the password.
 
-Unlocking can remember the browser for 30 days: a signed, expiring pass goes into a cookie (never the
-password). "Lock" in the header forgets the browser; changing APP_PASSWORD (or AUTH_SECRET) voids every
-pass at once. Wrong passwords are limited per address and across the whole app, so guessing is hopeless
+Unlocking can remember the browser for 30 days: a signed, expiring pass is saved in the browser (never
+the password), and the page hands it back to the server on each visit. "Lock" in the header forgets the
+browser; changing APP_PASSWORD (or AUTH_SECRET) voids every pass at once. Wrong passwords are limited per address and across the whole app, so guessing is hopeless
 against a long random password.
 """
 from __future__ import annotations
@@ -27,14 +27,14 @@ from portfolio.config import env
 MIN_PASSWORD = 16
 REMEMBER_DAYS = 30
 SESSION_HOURS = 12                 # an unlock that isn't remembered lasts this long in its tab
-COOKIE = "sw_pass"
+STORE = "sw_pass"                  # the browser's localStorage key (and the first version's cookie name)
 IP_TRIES, IP_WINDOW = 5, 300       # wrong passwords from one address before it waits 5 minutes
 ALL_TRIES, ALL_WINDOW = 20, 900    # wrong passwords from anywhere before everyone waits 15 minutes
 
 ENTERED = "entered"                # session_state keys
 PASS = "_pass"                     # this tab's signed pass, once unlocked
-FORGET = "_forget"                 # after Lock: ignore the cookie the browser sent when it connected
-PENDING = "_cookie_js"             # a cookie change for the browser, run on the next full run
+FORGET = "_forget"                 # after Lock: ignore a pass the page sends from before it
+PENDING = "_store_js"              # a change to the saved pass, for the browser on the next full run
 
 
 def password() -> str | None:
@@ -59,9 +59,7 @@ def authorized() -> bool:
     pw = password()
     if pw is None:
         return False
-    if valid(st.session_state.get(PASS), pw):
-        return True
-    return not st.session_state.get(FORGET) and valid(_cookie(), pw)
+    return valid(st.session_state.get(PASS), pw)
 
 
 # ---------------------------------------------------------------- the signed pass
@@ -96,11 +94,49 @@ def valid(token: str | None, pw: str | None, now: float | None = None) -> bool:
     return hmac.compare_digest(sig.encode(), _sign(pw, exp).encode())
 
 
-def _cookie() -> str | None:
-    try:
-        return st.context.cookies.get(COOKIE)
-    except Exception:  # noqa: BLE001 - no browser (tests)
-        return None
+# ---------------------------------------------------------------- the pass this browser saved
+# Streamlit Cloud doesn't pass cookies through to the app, so the page reads the saved pass itself and sends
+# it over the app's own connection, once per page load. Whatever arrives is checked like any other pass.
+_READ_JS = r"""
+export default function ({ setTriggerValue }) {
+  if (window.__swPassSent) return;
+  window.__swPassSent = true;
+  let pass = null;
+  try { pass = window.localStorage.getItem("sw_pass"); } catch (e) {}
+  const old = document.cookie.match(/(?:^|;\s*)sw_pass=([^;]+)/);   // the first version kept it in a cookie
+  if (old) {
+    pass = pass || old[1];
+    try { window.localStorage.setItem("sw_pass", pass); } catch (e) {}
+    document.cookie = "sw_pass=; Max-Age=0; Path=/";
+  }
+  if (pass) setTriggerValue("token", pass);
+}
+"""
+READER = "sw_pass_reader"
+_mount = None
+
+
+def _reader(**kw):
+    """Mount the reader, registering it once per server runtime (a registration doesn't outlive its runtime)."""
+    global _mount
+    from streamlit.components.v2.get_bidi_component_manager import get_bidi_component_manager
+
+    if _mount is None or get_bidi_component_manager().get(READER) is None:
+        _mount = st.components.v2.component(READER, js=_READ_JS)
+    return _mount(**kw)
+
+
+def recall() -> None:
+    """Take a pass this browser saved ("Remember this browser"), when the page sends one. Call on every run."""
+    with st.container(key="sw-pass-reader"):
+        got = _reader(key="sw-pass", on_token_change=_ignore)
+    token = got.get("token") if got else None
+    if token and not st.session_state.get(FORGET) and valid(token, password()):
+        st.session_state[PASS] = token
+
+
+def _ignore() -> None:
+    pass
 
 
 # ---------------------------------------------------------------- wrong passwords
@@ -158,7 +194,7 @@ def unlock(entered: str, remember: bool) -> str | None:
     token = make_pass(pw, REMEMBER_DAYS * 86400 if remember else SESSION_HOURS * 3600, now)
     st.session_state[PASS] = token
     if remember:
-        st.session_state[PENDING] = _cookie_js(token, REMEMBER_DAYS * 86400)
+        st.session_state[PENDING] = _store_js(token)
     return None
 
 
@@ -166,17 +202,17 @@ def lock() -> None:
     """Back to the Simulation-only view, and this browser forgotten."""
     st.session_state.pop(PASS, None)
     st.session_state[FORGET] = True
-    st.session_state[PENDING] = _cookie_js("", 0)
+    st.session_state[PENDING] = _store_js("")
 
 
-def _cookie_js(value: str, max_age: int) -> str:
-    # Streamlit can read cookies but not set them, so the browser sets it. The pass is digits, a dot and hex.
-    return (f"<script>document.cookie = '{COOKIE}={value}; Max-Age={max_age}; Path=/; SameSite=Strict'"
-            " + (location.protocol === 'https:' ? '; Secure' : '');</script>")
+def _store_js(token: str) -> str:
+    # the pass is digits, a dot and hex, so it sits safely in the script
+    act = f'localStorage.setItem("{STORE}", "{token}")' if token else f'localStorage.removeItem("{STORE}")'
+    return f'<script>try {{ {act}; }} catch (e) {{}} document.cookie = "{STORE}=; Max-Age=0; Path=/";</script>'
 
 
 def flush() -> None:
-    """Hand a pending cookie change (after unlocking or locking) to the browser."""
+    """Hand a pending change to the saved pass (after unlocking or locking) to the browser."""
     if js := st.session_state.pop(PENDING, None):
         st.html(f'<div class="sw-cookie"></div>{js}', unsafe_allow_javascript=True)
 

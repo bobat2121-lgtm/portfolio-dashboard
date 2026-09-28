@@ -86,7 +86,8 @@ abilities stay behind your own logins and 2FA at each company, which this projec
   (<16 characters) `APP_PASSWORD` leaves only the Simulation. Wrong guesses are slowed, limited to 5 per
   address per 5 minutes and 20 app-wide per 15 minutes, and visitors never see error details.
 - **"Remember this browser" stores a signed pass, not the password.** It is good for 30 days, only in that
-  browser. **Lock** in the header forgets the browser; changing `APP_PASSWORD` (or `AUTH_SECRET`) voids every
+  browser (its local storage; the page hands it to the server on each visit, since Streamlit Cloud doesn't
+  pass cookies through to apps). **Lock** in the header forgets the browser; changing `APP_PASSWORD` (or `AUTH_SECRET`) voids every
   pass at once. Anyone using a remembered browser can switch the Simulation off, so press Lock before
   handing yours to someone.
 - **The cloud app holds no broker keys.** It reads the database through a login that is not allowed to write.
