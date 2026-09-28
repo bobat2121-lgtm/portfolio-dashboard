@@ -73,15 +73,22 @@ Main file `streamlit_app.py`, Python 3.12.
 | Kraken API key | GitHub secrets, your `.env` | read balances and ledger. No trade, deposit or withdraw permission exists on the key |
 | DB owner URL | GitHub secrets, your `.env` | read or alter the dashboard's copy of your data. It holds no broker credentials |
 | DB read-only URL | Streamlit secrets | read the dashboard's copy of your data |
-| APP_PASSWORD | Streamlit secrets | view the dashboard |
+| APP_PASSWORD | Streamlit secrets | view the dashboard (changing it signs out every remembered browser) |
+| AUTH_SECRET (optional) | Streamlit secrets | nothing on its own: extra key mixed into the 30-day browser pass. Changing it signs out every remembered browser |
 
 Nothing in this project can log in to Fidelity, Robinhood or Kraken, trade, or move money. Those
 abilities stay behind your own logins and 2FA at each company, which this project never sees.
 
 **Guards in the code:**
-- **Nothing on the dashboard loads before the password.** Against the real database, a missing or short
-  (<16 characters) `APP_PASSWORD` locks the app instead of opening it. Wrong guesses are slowed down and
-  locked out, and visitors never see error details.
+- **Your real accounts never load without the password.** Visitors get an Enter button, then the made-up
+  Simulation. Switching it off asks for `APP_PASSWORD`, and the check is on the server, in front of every
+  data read ([panel/auth.py](panel/auth.py)), so nothing a browser sends gets around it. A missing or short
+  (<16 characters) `APP_PASSWORD` leaves only the Simulation. Wrong guesses are slowed, limited to 5 per
+  address per 5 minutes and 20 app-wide per 15 minutes, and visitors never see error details.
+- **"Remember this browser" stores a signed pass, not the password.** It is good for 30 days, only in that
+  browser. **Lock** in the header forgets the browser; changing `APP_PASSWORD` (or `AUTH_SECRET`) voids every
+  pass at once. Anyone using a remembered browser can switch the Simulation off, so press Lock before
+  handing yours to someone.
 - **The cloud app holds no broker keys.** It reads the database through a login that is not allowed to write.
 - **Actions logs are redacted.** They show no amounts, symbols, account names or error text. Details
   stay in the database, on the Sync tab.
@@ -90,8 +97,8 @@ abilities stay behind your own logins and 2FA at each company, which this projec
 - **Nothing personal is committed.** Pins and cost-basis overrides go in the `PORTFOLIO_CONFIG` secret.
 
 **Settings to keep:** 2FA on GitHub, Streamlit (it signs in through GitHub), Neon, SnapTrade and Kraken.
-No collaborators on the repo. Streamlit's own sharing set to what you want (public is fine: the password gate
-covers it).
+No collaborators on the repo. Streamlit's own sharing set to what you want (public is fine: visitors only
+ever see the Simulation).
 
 **Rotating a key** (if you ever suspect a leak): delete it at the provider (SnapTrade API key page, Kraken
 API page, Neon role password), create a new one, and update `.env` and the GitHub/Streamlit secrets.
@@ -103,8 +110,9 @@ API page, Neon role password), create a new one, and update `.env` and the GitHu
 made-up, static portfolio worth $32,571: SPCX, MSTR, BTC, QQQ, TSLA, AUR, an AAPL call and cash across four accounts, with a
 year of tranches, a few sales, dividends and invented prices ([portfolio/simulation.py](portfolio/simulation.py)).
 Every page, the ticker and the Taxes page read it instead of your data, so the dashboard can be shown to anyone.
-It starts on for every visit; press it to see your real portfolio, live. (It's built into a throwaway SQLite file
-per day; your real database is never touched.)
+Every visit starts with an Enter button and opens on the Simulation; press Simulation and give the password
+to see your real portfolio, live (tick "Remember this browser" to skip the password for 30 days; **Lock** undoes
+it). (The Simulation is built into a throwaway SQLite file per day; your real database is never touched.)
 
 Under the title, two hero tags: **Total value** (and what it is in bitcoin) and **YTD return** since Dec 31,
 money-weighted so deposits never count as gains, next to the same money held in bitcoin or the S&P 500 (hover it
@@ -222,7 +230,8 @@ Nothing is ever deleted. When you exit a position, its row stays at quantity 0 w
 ```
 portfolio/       config, db (schema), models, sources/{snaptrade,kraken}, prices, costbasis, sync, queries
 jobs/            sync, link, readonly_login, demo (CLI entry points)
-panel/           Streamlit plumbing (secrets, password gate, caches) + theme.py and assets/ (the space scene, CSS, font)
+panel/           Streamlit plumbing (secrets, caches), auth.py (Enter screen, password, 30-day pass) + theme.py and
+                 assets/ (the space scene, CSS, font)
 streamlit_app.py the dashboard
 config/portfolio.yaml   account map + knobs
 .github/workflows/sync.yml

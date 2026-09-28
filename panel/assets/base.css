@@ -28,7 +28,8 @@ html, body { background: var(--space) !important; }
 .stApp, [data-testid="stApp"], [data-testid="stAppViewContainer"], [data-testid="stMain"],
 [data-testid="stHeader"], [data-testid="stBottomBlockContainer"] { background: transparent !important; }
 [data-testid="stDecoration"] { display: none !important; }
-[data-testid="stElementContainer"]:has(#space-boot), [data-testid="stElementContainer"]:has(.space-mood) { display: none !important; }
+[data-testid="stElementContainer"]:has(#space-boot), [data-testid="stElementContainer"]:has(.space-mood),
+[data-testid="stElementContainer"]:has(.sw-cookie) { display: none !important; }
 html.space-consumed, html.space-consumed body { background: #000 !important; overflow: hidden !important; }
 html.space-consumed #root { visibility: hidden !important; }
 
@@ -151,6 +152,19 @@ h3::after { content: ""; display: block; width: 46px; height: 2px; margin-top: .
 .st-key-tax_year button p, [class*="st-key-sw-drawer-range"] button p { font-family: var(--label) !important; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: .58rem !important; }
 .st-key-tax_year button:hover, [class*="st-key-sw-drawer-range"] button:hover { border-color: var(--saber-blue) !important; color: var(--saber-blue) !important; }
 .st-key-tax_year button[aria-checked="true"], [class*="st-key-sw-drawer-range"] button[aria-checked="true"] { background: var(--sw-yellow-faint) !important; border-color: var(--sw-yellow) !important; color: var(--sw-yellow) !important; box-shadow: inset 0 0 10px var(--sw-yellow-faint); }
+
+/* the start screen: one Enter button over the scene */
+.st-key-sw-enter { padding-top: 1.4rem; }
+.st-key-sw-enter [data-testid^="stBaseButton"] { min-height: 3rem !important; padding: .55rem 2.8rem !important;
+  box-shadow: 0 0 16px var(--sw-yellow-faint), inset 0 0 10px var(--sw-yellow-faint); }
+.st-key-sw-enter [data-testid^="stBaseButton"]:hover { box-shadow: 0 0 18px var(--saber-blue-soft), inset 0 0 10px var(--saber-blue-soft); }
+.st-key-sw-enter [data-testid^="stBaseButton"] p { font-size: .95rem !important; letter-spacing: .4em !important; margin-right: -.4em; }
+
+/* the password pop-up (switching the Simulation off): a chamfered panel over the dimmed scene */
+[data-testid="stDialog"] { background: rgba(2, 3, 8, .62) !important; }
+[data-testid="stDialog"] > div { background: var(--panel) !important; border-radius: 0 !important; clip-path: var(--chamfer);
+  box-shadow: inset 0 0 0 1px var(--panel-line), inset 0 2px 0 0 var(--sw-yellow-soft) !important; }
+[data-testid="stDialog"] h2 { color: var(--sw-yellow) !important; text-shadow: 0 0 14px rgba(255, 232, 31, .3); }
 
 /* inputs (password) */
 [data-testid="stTextInputRootElement"], [data-baseweb="input"] { background: rgba(4, 5, 11, .8) !important; border-radius: 0 !important; border-color: var(--sw-yellow-soft) !important; }

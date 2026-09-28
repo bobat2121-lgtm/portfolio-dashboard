@@ -13,8 +13,8 @@ from pathlib import Path
 
 import streamlit as st
 
-from panel import theme
-from panel.common import boot, gate
+from panel import auth, theme
+from panel.common import boot
 
 if "--demo" in sys.argv:
     os.environ["DEMO"] = "1"
@@ -23,8 +23,9 @@ if "--demo" in sys.argv:
 ICON = Path(__file__).parent / "panel" / "assets" / "favicon.png"
 st.set_page_config(page_title="BTC Supernova", page_icon=str(ICON), layout="wide")
 boot()
-theme.apply(theme.current_style())  # the scene shows on the lock screen too; it carries no data
-gate()
+theme.apply(theme.current_style())  # the scene shows on the Enter screen too; it carries no data
+auth.flush()                        # a cookie change from the last unlock / lock
+auth.entrance()                     # the Enter button; the app opens on the Simulation (see panel/auth.py)
 
 from panel import dashboard, taxes_page  # noqa: E402  (after boot: secrets must be in env first)
 
