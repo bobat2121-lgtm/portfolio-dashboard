@@ -105,7 +105,7 @@ def test_simulation_is_on_by_default_and_switches_to_the_real_accounts(tmp_db, m
     assert not at.exception, at.exception
     assert "$32,571" in deck(at)                                    # the made-up portfolio
     cards = " ".join(str(e.proto) for e in at.get("html") if "sw-hold" in str(e.proto))
-    for sym in ("SPCX", "MSTR", "BTC", "QQQ", "Cash", "AAPL"):
+    for sym in ("SPCX", "MSTR", "BTC", "QQQ", "TSLA", "AUR", "Cash", "AAPL"):
         assert f">{sym}<" in cards, sym
     at.button(key="sw-sim-on").click().run()                       # off: the real (test) accounts
     assert not at.exception, at.exception

@@ -19,15 +19,16 @@ def sim(tmp_path):
     db.reset_engine()
 
 
-def test_the_made_up_portfolio_is_worth_32571_in_six_holdings(sim):
+def test_the_made_up_portfolio_is_worth_32571_in_eight_holdings(sim):
     h, c = queries.holdings(), queries.cash()
     priced = queries.reprice(h, simulation.quotes(TODAY))
     t = queries.totals(priced, c)
     assert t["total"] == pytest.approx(32_571.00, abs=0.005)
     assets = lenses.combine_assets(priced, c)
-    assert sorted(assets["asset"]) == sorted(["SPCX", "MSTR", "BTC", "QQQ", "Cash", "AAPL $250 call Jan '27"])
+    assert sorted(assets["asset"]) == sorted(["SPCX", "MSTR", "BTC", "QQQ", "TSLA", "AUR", "Cash", "AAPL $250 call Jan '27"])
     unreal = dict(zip(assets["asset"], assets["unrealized"]))
-    assert unreal["SPCX"] > 0 and unreal["QQQ"] > 0 and unreal["MSTR"] < 0 and unreal["AAPL $250 call Jan '27"] < 0
+    assert unreal["SPCX"] > 0 and unreal["AUR"] > 0 and unreal["MSTR"] < 0 and unreal["TSLA"] < 0
+    assert unreal["AAPL $250 call Jan '27"] < 0
 
 
 def test_it_has_tranches_sales_and_a_clean_history(sim):

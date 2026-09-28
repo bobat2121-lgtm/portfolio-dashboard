@@ -1,6 +1,6 @@
 """The made-up portfolio behind the header's Simulation switch, so the dashboard can be shown to anyone
-without real balances: worth $32,571 today, in SPCX, MSTR, BTC, QQQ, an AAPL call and cash across four
-accounts, with a year of buys, some sales (MSTR at a loss, SPCX and BTC at a gain), QQQ dividends and cash
+without real balances: worth $32,571 today, in SPCX, MSTR, BTC, QQQ, TSLA, AUR, an AAPL call and cash across
+four accounts, with a year of buys, some sales (MSTR at a loss, SPCX and BTC at a gain), QQQ dividends and cash
 interest, and invented daily prices for the charts. It's static: the same numbers every day, with its
 dates ending today.
 
@@ -22,7 +22,8 @@ from portfolio import db, models as m
 from portfolio.prices import KRAKEN, YAHOO, QuoteData
 from portfolio.timeutil import today_ny, utcnow
 
-VERSION = 2                       # bump to rebuild everyone's file after changing what's in here
+VERSION = 3                       # bump to rebuild everyone's file after changing what's in here
+SEED = 2                          # the price paths' random seed (kept, so existing paths don't reshuffle)
 TOTAL = 32_571.00                 # what the whole portfolio is worth today
 START = date(2025, 5, 1)          # the price series start (a year+ of closes for betas)
 OPTION = "AAPL  270115C00250000"  # AAPL $250 call, Jan 15 2027
@@ -33,7 +34,7 @@ ACCOUNTS = {  # key: (label, institution, tax, source, raw_type)
     "robinhood_ira": ("Robinhood IRA", "Robinhood", "ira", "snaptrade", "ira_roth"),
     "kraken": ("Kraken", "Kraken", "taxable", "kraken", "spot"),
 }
-CASH = {"fidelity_taxable": 2_100.00, "robinhood_taxable": 1_200.12, "robinhood_ira": 338.25, "kraken": 0.0}
+CASH = {"fidelity_taxable": 1_250.00, "robinhood_taxable": 710.40, "robinhood_ira": 339.35, "kraken": 0.0}
 
 # Invented price paths: anchors (date, close), with a random walk pinned between them. "today" is the
 # latest close (the last weekday for stocks).
@@ -50,37 +51,48 @@ PATHS = {  # yahoo symbol: (daily volatility, anchors)
     "AAPL": (0.013, [("2025-05-01", 210), ("2025-09-02", 232), ("2025-12-01", 278), ("2026-03-02", 245),
                      ("2026-06-01", 219), ("today", 226.50)]),
     "SPY": (0.007, [("2025-05-01", 565), ("2025-12-31", 682), ("2026-03-16", 655), ("today", 712)]),
+    "TSLA": (0.030, [("2025-05-01", 280), ("2025-07-01", 300), ("2025-12-15", 470), ("2026-03-02", 390),
+                     ("2026-06-01", 300), ("today", 318.40)]),
+    "AUR": (0.035, [("2025-05-01", 6.2), ("2025-08-01", 5.4), ("2025-12-01", 4.6), ("2026-03-02", 6.9),
+                    ("2026-06-01", 8.6), ("today", 7.85)]),
 }
-NAMES = {"MSTR": "Strategy Inc.", "SPCX": "SpaceX", "QQQ": "Invesco QQQ Trust", "BTC": "Bitcoin", OPTION: ""}
+NAMES = {"MSTR": "Strategy Inc.", "SPCX": "SpaceX", "QQQ": "Invesco QQQ Trust", "BTC": "Bitcoin",
+         "TSLA": "Tesla, Inc.", "AUR": "Aurora Innovation, Inc.", OPTION: ""}
 
 # (date, account, side, symbol, quantity); prices come from the paths on that day
 TRADES = [
-    ("2025-07-15", "robinhood_taxable", m.BUY, "SPCX", 20),
-    ("2025-07-21", "robinhood_ira", m.BUY, "QQQ", 5),
-    ("2025-08-12", "fidelity_taxable", m.BUY, "MSTR", 5),
-    ("2025-09-02", "kraken", m.BUY, "BTC", 0.02),
-    ("2025-10-02", "fidelity_taxable", m.BUY, "MSTR", 6),
-    ("2025-11-03", "robinhood_taxable", m.BUY, "SPCX", 15),
-    ("2025-12-10", "fidelity_taxable", m.BUY, "MSTR", 10),
-    ("2025-12-15", "kraken", m.BUY, "BTC", 0.03),
-    ("2026-01-12", "robinhood_ira", m.BUY, "QQQ", 4),
-    ("2026-01-20", "fidelity_taxable", m.BUY, "MSTR", 12),
-    ("2026-02-06", "kraken", m.BUY, "BTC", 0.035),
+    ("2025-07-15", "robinhood_taxable", m.BUY, "SPCX", 15),
+    ("2025-07-21", "robinhood_ira", m.BUY, "QQQ", 4),
+    ("2025-08-12", "fidelity_taxable", m.BUY, "MSTR", 4),
+    ("2025-08-20", "robinhood_taxable", m.BUY, "TSLA", 5),
+    ("2025-09-02", "kraken", m.BUY, "BTC", 0.015),
+    ("2025-09-10", "robinhood_ira", m.BUY, "AUR", 150),
+    ("2025-10-02", "fidelity_taxable", m.BUY, "MSTR", 5),
+    ("2025-11-03", "robinhood_taxable", m.BUY, "SPCX", 10),
+    ("2025-12-10", "fidelity_taxable", m.BUY, "MSTR", 8),
+    ("2025-12-15", "kraken", m.BUY, "BTC", 0.025),
+    ("2026-01-08", "robinhood_taxable", m.BUY, "TSLA", 4),
+    ("2026-01-12", "robinhood_ira", m.BUY, "QQQ", 3),
+    ("2026-01-20", "fidelity_taxable", m.BUY, "MSTR", 10),
+    ("2026-01-27", "robinhood_ira", m.BUY, "AUR", 150),
+    ("2026-02-06", "kraken", m.BUY, "BTC", 0.03),
     ("2026-02-10", "fidelity_taxable", m.SELL, "MSTR", 8),      # sold near the lows: a loss
     ("2026-02-20", "robinhood_taxable", m.BUY, "SPCX", 15),
-    ("2026-03-05", "fidelity_taxable", m.BUY, "MSTR", 8),
-    ("2026-03-20", "kraken", m.BUY, "BTC", 0.02),
+    ("2026-03-05", "fidelity_taxable", m.BUY, "MSTR", 6),
+    ("2026-03-20", "kraken", m.BUY, "BTC", 0.015),
     ("2026-04-06", "robinhood_ira", m.BUY, "QQQ", 3),
+    ("2026-04-22", "robinhood_taxable", m.BUY, "TSLA", 3),
+    ("2026-05-05", "robinhood_ira", m.BUY, "AUR", 100),
     ("2026-05-12", "fidelity_taxable", m.BUY, "MSTR", 5),
     ("2026-05-18", "fidelity_taxable", m.BUY, OPTION, 2),       # 2 contracts at $13.20
     ("2026-06-15", "robinhood_taxable", m.SELL, "SPCX", 10),    # a gain
-    ("2026-07-10", "kraken", m.SELL, "BTC", 0.0125),            # a gain
+    ("2026-07-10", "kraken", m.SELL, "BTC", 0.0125),
 ]
 OPTION_PRICES = (13.20, 10.30, 9.85)  # paid per share, yesterday, today
 DIVIDEND_DATES = ["2025-09-22", "2025-12-22", "2026-03-23", "2026-06-22", "2026-09-21"]  # QQQ, $0.65 a share
 WATCH = {  # the top bar's watchlist: (price, previous close), made up
     ("yahoo", "SPCX"): None, ("yahoo", "QQQ"): None, ("yahoo", "SPY"): None,  # from the paths
-    ("yahoo", "TSLA"): (318.40, 322.95), ("kraken", "ETH"): (3_105.20, 3_061.80), ("yahoo", "BMNR"): (31.12, 30.07),
+    ("yahoo", "TSLA"): None, ("kraken", "ETH"): (3_105.20, 3_061.80), ("yahoo", "BMNR"): (31.12, 30.07),
     ("yahoo", "STRC"): (99.60, 99.44), ("yahoo", "SATA"): (100.02, 100.02), ("kraken", "ZEC"): (58.40, 60.25),
     ("yahoo", "^RUT"): (2_415.30, 2_401.62),
 }
@@ -105,7 +117,7 @@ def closes(today: date) -> dict[str, dict[date, float]]:
     for sym, (vol, anchors) in PATHS.items():
         crypto = sym.endswith("-USD")
         pts = [(_day(d, today) if crypto else _last_weekday(_day(d, today)), float(p)) for d, p in anchors]
-        rnd = random.Random(f"{sym}-{VERSION}")
+        rnd = random.Random(f"{sym}-{SEED}")
         series: dict[date, float] = {}
         for (d0, p0), (d1, p1) in zip(pts, pts[1:]):
             n = max(1, (d1 - d0).days)
@@ -322,6 +334,7 @@ def quotes(today: date | None = None) -> dict[tuple[str, str], QuoteData]:
 
     out = {}
     for venue, sym, ysym in ((YAHOO, "MSTR", "MSTR"), (YAHOO, "SPCX", "SPCX"), (YAHOO, "QQQ", "QQQ"), (YAHOO, "SPY", "SPY"),
+                             (YAHOO, "TSLA", "TSLA"), (YAHOO, "AUR", "AUR"),
                              (YAHOO, "AAPL", "AAPL"), (KRAKEN, "BTC", "BTC-USD")):
         p, prev = last_two(ysym)
         out[(venue, sym)] = QuoteData(venue, sym, p, prev, now)
