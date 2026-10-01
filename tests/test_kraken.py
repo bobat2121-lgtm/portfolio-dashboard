@@ -1,6 +1,11 @@
+import httpx
+import pytest
+
 from portfolio import models as m
 from portfolio.costbasis import average_cost, basis_for
-from portfolio.sources.kraken import balances_to_holdings, ledger_to_txns, normalize_asset, sign
+from portfolio.sources.kraken import (
+    KrakenClient, KrakenError, balances_to_holdings, ledger_to_txns, normalize_asset, sign,
+)
 
 STABLES = {"USDC", "USDT"}
 
@@ -11,6 +16,39 @@ def test_signature_matches_krakens_published_example():
     assert sign("/0/private/AddOrder", body, "1616492376594", secret) == (
         "4/dpxb3iT4tp/ZCVEwSnEsLxx0bqyhLpdfOpc6fn7OR8+UClSV5n9E6aSS8MPtnRfp32bAb0nmbRn6H8ndwLUQ=="
     )
+
+
+class _Http:
+    """Records private calls and answers each with an empty result."""
+
+    def __init__(self):
+        self.urls = []
+
+    def post(self, url, content, headers):
+        self.urls.append(url)
+        return httpx.Response(200, json={"error": [], "result": {}}, request=httpx.Request("POST", url))
+
+
+def _client(http):
+    return KrakenClient(key="k", secret="c2VjcmV0", http=http, sleep=lambda s: None)
+
+
+def test_private_calls_that_trade_or_move_money_never_leave_the_app():
+    http = _Http()
+    client = _client(http)
+    for method in ("AddOrder", "AmendOrder", "CancelAll", "Withdraw", "WalletTransfer", "Earn/Allocate",
+                   "DepositAddresses", "Balance/../Withdraw", "balance"):
+        with pytest.raises(KrakenError, match="refused"):
+            client.private(method, asset="XBT")
+    assert http.urls == []
+
+
+def test_balance_and_ledger_still_go_through():
+    http = _Http()
+    client = _client(http)
+    client.balances()
+    client.ledger()
+    assert http.urls == ["https://api.kraken.com/0/private/Balance", "https://api.kraken.com/0/private/Ledgers"]
 
 
 def test_asset_codes_fold_to_one_symbol():

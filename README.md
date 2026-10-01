@@ -91,6 +91,9 @@ abilities stay behind your own logins and 2FA at each company, which this projec
   pass at once. Anyone using a remembered browser can switch the Simulation off, so press Lock before
   handing yours to someone.
 - **The cloud app holds no broker keys.** It reads the database through a login that is not allowed to write.
+- **The Kraken client can only read.** It signs just two private calls, balances and the ledger, and refuses
+  any other (orders, withdrawals, Earn moves) before a request is built
+  ([portfolio/sources/kraken.py](portfolio/sources/kraken.py)). The key's own permissions are the first wall; this is the second.
 - **Actions logs are redacted.** They show no amounts, symbols, account names or error text. Details
   stay in the database, on the Sync tab.
 - **The workflow never runs on pull requests.** Its token is read-only, actions are pinned to exact

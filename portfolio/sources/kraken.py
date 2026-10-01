@@ -23,6 +23,9 @@ from portfolio.sources._util import num
 from portfolio.timeutil import utcnow
 
 API = "https://api.kraken.com"
+# The only private calls this app makes. Anything else (orders, withdrawals, Earn moves) is refused
+# before a request is signed, so the code can't trade or move money even if the key could.
+READ_ONLY = frozenset({"Balance", "Ledgers"})
 
 # Kraken's legacy 4-letter codes, and names it uses that nobody else does.
 LEGACY = {
@@ -90,6 +93,8 @@ class KrakenClient:
         return self._result(self.http.get(f"{API}/0/public/{method}", params=params))
 
     def private(self, method: str, **params) -> dict:
+        if method not in READ_ONLY:
+            raise KrakenError(f"refused: {method} is not a read-only call")
         path = f"/0/private/{method}"
         last = None
         for attempt in range(4):
