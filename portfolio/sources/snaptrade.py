@@ -15,6 +15,7 @@ from portfolio.config import env, pricing
 from portfolio.sources import SinceFn
 from portfolio.sources._util import num, plain
 from portfolio.timeutil import parse_dt
+from portfolio.transactions import normalize_security_transfer
 
 KIND_TO_CLASS = {
     "stock": m.EQUITY, "adr": m.EQUITY, "etf": m.ETF, "mutualfund": m.FUND, "cef": m.FUND,
@@ -137,7 +138,7 @@ def parse_activity(r: dict) -> m.Txn:
     trade = parse_dt(r.get("trade_date")) or parse_dt(r.get("settlement_date"))
     settle = parse_dt(r.get("settlement_date"))
     currency = ((r.get("currency") or {}).get("code") or (sym.get("currency") or {}).get("code") or "USD").upper()
-    return m.Txn(
+    return m.Txn(**normalize_security_transfer(dict(
         external_id=str(r.get("id")),
         type=t,
         raw_type=raw_type,
@@ -152,7 +153,7 @@ def parse_activity(r: dict) -> m.Txn:
         description=r.get("description") or "",
         settle_date=settle.date() if settle else None,
         raw=r,
-    )
+    )))
 
 
 class SnapTradeSource:
