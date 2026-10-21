@@ -5,6 +5,7 @@ import pandas as pd
 from sqlalchemy import func, select
 
 from portfolio import db, models as m, prices
+from portfolio.transactions import normalize_transactions
 
 
 def _df(stmt) -> pd.DataFrame:
@@ -142,7 +143,7 @@ def transactions(limit: int = 200) -> pd.DataFrame:
                    db.Transaction.fee, db.Transaction.description)
             .join(db.Account, db.Account.key == db.Transaction.account_key)
             .order_by(db.Transaction.trade_date.desc(), db.Transaction.id.desc()).limit(limit))
-    return _df(stmt)
+    return normalize_transactions(_df(stmt))
 
 
 def changes(limit: int = 100) -> pd.DataFrame:
@@ -156,10 +157,11 @@ def changes(limit: int = 100) -> pd.DataFrame:
 def contributions() -> pd.DataFrame:
     """Money you put in / took out, per account per month (deposits and withdrawals only)."""
     stmt = (select(db.Transaction.trade_date, db.Account.label.label("account"), db.Transaction.type,
-                   db.Transaction.amount)
+                   db.Transaction.amount, db.Transaction.symbol, db.Transaction.quantity)
             .join(db.Account, db.Account.key == db.Transaction.account_key)
             .where(db.Transaction.type.in_([m.DEPOSIT, m.WITHDRAWAL])))
-    df = _df(stmt)
+    df = normalize_transactions(_df(stmt))
+    df = df[df["type"].isin([m.DEPOSIT, m.WITHDRAWAL])].copy()
     if df.empty:
         return df
     df["month"] = pd.to_datetime(df["trade_date"]).dt.to_period("M").astype(str)
@@ -181,7 +183,9 @@ def all_transactions() -> pd.DataFrame:
                    db.Transaction.fee, db.Transaction.id)
             .join(db.Account, db.Account.key == db.Transaction.account_key)
             .order_by(db.Transaction.trade_date, db.Transaction.id))
-    return _df(stmt)
+    # Repair historical provider classifications on every read, including rows
+    # older than the next sync's overlap window. Raw stored activity stays intact.
+    return normalize_transactions(_df(stmt))
 
 
 def price_history() -> pd.DataFrame:
